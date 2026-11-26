@@ -73,6 +73,20 @@ no cloud, no analytics. All data stays on the user's Android phone.
   import must migrate older exports.
 - No `localStorage` for real data.
 
+## Files
+- `index.html` – the single page (header with version, sections, tab bar).
+- `styles.css` – all styling; colors are variables at the top.
+- `app.js` – app logic; registers the service worker, shows the version.
+- `sw.js` – service worker: `VERSION`, precache list, offline + updates.
+- `manifest.webmanifest` – makes the app installable (name, icons, colors).
+- `icons/` – app icons (made once in Claude's workspace; plain PNGs).
+- `.nojekyll` – tells GitHub Pages not to process the files.
+
+## Testing
+Before shipping, Claude tests in its workspace with headless Chromium, serving
+the files under a `/gym-tracker/` sub-folder like GitHub Pages: no console
+errors, installable, works offline, and a `VERSION` bump replaces the old one.
+
 ## Checklist for every change
 1. Bump `VERSION` in `sw.js`.
 2. Add any new file to the service worker's precache list.
@@ -165,7 +179,7 @@ complex dashboards, etc. Keeping it simple for now.
 Original order from the brief: 1. Log screen + installable PWA; 2. Rest timer,
 progression hint, export/import; 3. Progress; 4. Body. Detailed plan (agreed,
 subject to change; mark items done as they ship):
-- [ ] 1a. App shell: installable, offline, shows version, tab bar. Prove that
+- [x] 1a. App shell: installable, offline, shows version, tab bar. Prove that
       install, airplane mode and updates all work before any data exists.
 - [ ] 1b. Data layer: IndexedDB + migrations, routines seeded, persistent storage.
 - [ ] 1c. Log screen: date, Upper/Lower, exercise list with last session,
