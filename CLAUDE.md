@@ -8,6 +8,8 @@ A personal gym-tracking app for one user. No accounts, no backend,
 no cloud, no analytics. All data stays on the user's Android phone.
 
 ## How the user works
+- No coding knowledge; the project is fully built by Claude ("vibe coded").
+  Claude handles all code, git and deploying. The user tests on the phone.
 - Works from their phone only (Claude Code in the Claude app). No computer, so
   they cannot run build tools, npm, or local servers.
 - New to web development. Explain non-obvious choices briefly and in plain language.
@@ -19,6 +21,10 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - Must work offline at the gym.
 - Claude can never run anything itself. Any build step has to run automatically
   on GitHub, or not exist at all.
+  - Clarified by the user: the app must never depend on anything being run or
+    on the internet. Claude *may* use its own cloud workspace to test (e.g.
+    headless browser) and to create one-off files such as icons, but the app
+    must work from the repo files alone.
 - Hosted on GitHub Pages from the root of the `main` branch.
 - PWA (manifest + service worker) that works fully offline.
 - New versions must reach the installed app: bump the cache version on every
@@ -77,13 +83,21 @@ no cloud, no analytics. All data stays on the user's Android phone.
 ## Git & deploy
 - Live site = `main` branch root. A change goes live when it lands on `main`;
   GitHub Pages then redeploys in about a minute.
-- Claude works on a feature branch. (How changes reach `main` — PR the user
-  merges in the GitHub app, or direct push — is pending the user's choice.)
+- The user leaves git to Claude. Claude works on its session branch, and
+  after the user OKs the plan for a change, Claude merges it into `main`
+  itself (no pull requests needed).
+- One-time setup by the user: repo Settings → Pages → "Deploy from a branch"
+  → `main` / `(root)`.
 
 ## Sections
 
 ### 1. Log
-- Pick a routine (Upper or Lower); exercises can be picked.
+- Pick a routine (Upper or Lower); exercises can be picked = done in any
+  order, and any can be skipped.
+- Logging screen: one row per set, prefilled from last time (or the routine's
+  minimum set count if there's no history). Big − / + buttons: **2.5 kg** for
+  weight, **1** for reps; tapping the number lets you type it. "+ Add set".
+- A saved set can be deleted (with confirmation) so typos don't stay forever.
 - Beside each exercise, show last session's weight and reps per set.
 - New sets are prefilled with last time's numbers; adjust and tap to save.
 - Progression hint: if the top of the rep range was hit on all sets last time,
@@ -103,7 +117,12 @@ no cloud, no analytics. All data stays on the user's Android phone.
 ## Routines (all machines)
 Store routines as data, not hard-coded, so they can change later.
 Weights in kg; allow 0 for possible bodyweight exercises.
-More exercises may be added in the future.
+The list is not final: the user will ask to add or modify exercises and
+routines over time.
+- Because defaults are only seeded into an empty database, a change requested
+  later is shipped as a **data migration** (add new exercises, rename by id,
+  change targets) so it reaches the installed app without touching history.
+- Later, an in-app editor may let the user do this themselves (build step 4).
 Renaming or editing an exercise must keep its history.
 
 Upper:
@@ -131,15 +150,33 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
+## Data model (v1)
+- `exercises`: `{ id, name }`. Seeded ids are readable (`chest-press`); the id
+  never changes even if the name does.
+- `routines`: `{ id, name, items: [{ exerciseId, sets: {min,max},
+  reps: {min,max}, optional }] }`. E.g. "2-3x10-12" → sets 2–3, reps 10–12.
+- `sets`: `{ id, date, exerciseId, routineId, setNo, weight, reps, savedAt }`,
+  indexed by `[exerciseId, date]` and by `date`.
+- No separate "workout" record: a session = all sets of one exercise on one
+  date. "Last session" = the most recent date *before* the selected date that
+  has sets for that exercise.
+
 ## Build order
-Subject to change. Claude should recommend a more detailed plan during planning.
-1. Log screen for both routines, with saving and last-session numbers.
-   Working as an installable PWA on GitHub Pages.
-2. Rest timer, progression hint, export/import.
-3. Progress section.
-4. Body section.
+Original order from the brief: 1. Log screen + installable PWA; 2. Rest timer,
+progression hint, export/import; 3. Progress; 4. Body. Detailed plan (agreed,
+subject to change; mark items done as they ship):
+- [ ] 1a. App shell: installable, offline, shows version, tab bar. Prove that
+      install, airplane mode and updates all work before any data exists.
+- [ ] 1b. Data layer: IndexedDB + migrations, routines seeded, persistent storage.
+- [ ] 1c. Log screen: date, Upper/Lower, exercise list with last session,
+      set rows prefilled, save, add/delete set.
+- [ ] 2a. Export/import (moved first: safety net before data piles up).
+- [ ] 2b. Rest timer (2 min).
+- [ ] 2c. Progression hint.
+- [ ] 3. Body: morning weight + 7-day average, then macros entry.
+      (Moved before Progress: the average needs data to build up.)
+- [ ] 4. Routine/exercise editor (add, rename keeping history).
+- [ ] 5. Progress section (define first).
 
 ## Open questions
 - Progress section: what it should show.
-- When to build the in-app routine/exercise editor (needed for "change routines
-  later" and "rename keeps history"; the data model supports it from day one).
