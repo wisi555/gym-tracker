@@ -23,6 +23,17 @@ function capRepsAt10(routine) {
   };
 }
 
+// v4 change (user clarified): EVERY rep range tops out at 10.
+// 10–15 → 10, 12–15 → 10. Shared with the backup upgrade.
+function capAllRepsAt10(routine) {
+  return {
+    ...routine,
+    items: routine.items.map((it) => (it.reps.max > 10
+      ? { ...it, reps: { min: Math.min(it.reps.min, 10), max: 10 } }
+      : it)),
+  };
+}
+
 const MIGRATIONS = [
   // v1: create the stores and load the starting routines.
   (db, tx) => {
@@ -61,6 +72,16 @@ const MIGRATIONS = [
       cursor.continue();
     };
   },
+
+  // v4: every rep range tops out at 10 (user clarified v3's request).
+  (db, tx) => {
+    tx.objectStore('routines').openCursor().onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (!cursor) return;
+      cursor.update(capAllRepsAt10(cursor.value));
+      cursor.continue();
+    };
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -72,6 +93,7 @@ export const SCHEMA_VERSION = MIGRATIONS.length;
 const BACKUP_MIGRATIONS = {
   1: (data) => { data.exercises = data.exercises.map(({ note, ...rest }) => rest); },
   2: (data) => { data.routines = data.routines.map(capRepsAt10); },
+  3: (data) => { data.routines = data.routines.map(capAllRepsAt10); },
 };
 
 let dbPromise = null;

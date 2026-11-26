@@ -171,6 +171,12 @@ checking that saved data survives. (Test quirk: Python's test server answers
 
 ### 2. Body
 - Morning weight; show the 7-day average as the main number.
+- Agreed so far: − / + steps of **0.1 kg**; one weight per day (saving again
+  replaces it); date can be changed to fill in a missed morning; last 14
+  days listed with delete. **No extra text lines** like "−0.4 kg vs last
+  week" (clutter).
+- Future idea (user would love it, later): a **chart of historical weekly
+  average weight**.
 - Macros tracking: the user enters the day's food in their own Claude session,
   which estimates the day's macros. The app needs a place to input and track
   those macros.
@@ -189,8 +195,9 @@ routines over time.
 - Later, an in-app editor may let the user do this themselves (build step 4).
 Renaming or editing an exercise must keep its history.
 
-Current (after v3 "reps top out at 10, not 12": 8-12 → 8-10, 10-12 → 10;
-ranges ending at 15 unchanged):
+**Rule: every rep range tops out at 10** (user's request; v3 capped 12s,
+v4 capped everything: 8-12 → 8-10, 10-12/10-15/12-15 → 10). Keep this for
+any exercise added later. Current:
 
 Upper:
 - Chest press 3x8-10
@@ -199,16 +206,16 @@ Upper:
 - Shoulder press 3x8-10
 - Biceps curl 2-3x10
 - Triceps press-down 2-3x10
-- Seated ab crunch 2-3x10-15
+- Seated ab crunch 2-3x10
 
 Lower (glute focus):
 - Hip thrust / glute bridge machine 4x8-10
 - Leg press 3-4x8-10
 - 45° back extension 3x10
-- Leg curl 3x10-15
-- Leg extension 2-3x10-15
-- Calf raise 3x10-15
-- Hip abductor (optional) 2-3x12-15
+- Leg curl 3x10
+- Leg extension 2-3x10
+- Calf raise 3x10
+- Hip abductor (optional) 2-3x10
 
 ## Backup
 Export all data to a JSON file, and import it back.
@@ -228,7 +235,7 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 3)
+## Data model (database version 4)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
@@ -236,7 +243,8 @@ complex dashboards, etc. Keeping it simple for now.
   the id never changes even if the name does.
 - Migration history: v1 created the stores and seeded routines (with a leg
   press setup `note`); v2 removed `note` fields; v3 capped rep ranges at 10
-  (`capRepsAt10`, also used by `BACKUP_MIGRATIONS[2]`).
+  (`capRepsAt10`, also used by `BACKUP_MIGRATIONS[2]`); v4 capped every
+  range at 10 (`capAllRepsAt10`, `BACKUP_MIGRATIONS[3]`).
 - `routines`: `{ id, name, subtitle?, order, items: [{ exerciseId,
   sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "2-3x10-12" →
   sets 2–3, reps 10–12. Ids: `upper`, `lower`.
@@ -267,6 +275,11 @@ subject to change; mark items done as they ship):
 ## Status notes
 - As of v6 the user has entered **no real workout data** (building in one
   session, not yet at the gym). Anything on the phone is test data.
+
+## Style changes
+The user will keep asking for purely visual tweaks (text, colors, icons,
+spacing) after features are done. Treat these as small changes: no plan/OK
+round needed unless it touches behavior or data; still bump `VERSION`.
 
 ## Open questions
 - Progress section: what it should show.
