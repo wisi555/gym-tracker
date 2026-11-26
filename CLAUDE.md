@@ -45,6 +45,10 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - **Relative paths everywhere** (`./app.js`, not `/app.js`): the site lives at
   `https://<user>.github.io/gym-tracker/`, a sub-folder, not the domain root.
 - **Single page app** with a bottom tab bar (thumb-reachable) to switch sections.
+- **Look: minimalist, pastel pink is the protagonist.** Pink `#f6b8cf` for the
+  header, active tab and main buttons; barely-pink white background; deep plum
+  `#3d1f2e` text for readability. Colors are variables at the top of
+  `styles.css`. Light theme only (for now). Icons match: plum dumbbell on pink.
 
 ### Update mechanism (how new versions reach the installed app)
 - `sw.js` holds one `VERSION` constant. The cache name includes it. The app
