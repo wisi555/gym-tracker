@@ -80,7 +80,12 @@ no cloud, no analytics. All data stays on the user's Android phone.
 ## Files
 - `index.html` – the single page (header with version, sections, tab bar).
 - `styles.css` – all styling; colors are variables at the top.
-- `app.js` – app logic; registers the service worker, shows the version.
+- `app.js` – app logic; registers the service worker, shows the version,
+  renders the screens.
+- `db.js` – the database: opening it, the `MIGRATIONS` list, read helpers,
+  persistent-storage request.
+- `defaults.js` – starting exercises/routines, used only by migration v1.
+  Never edit after release; changes go in a new migration in `db.js`.
 - `sw.js` – service worker: `VERSION`, precache list, offline + updates.
 - `manifest.webmanifest` – makes the app installable (name, icons, colors).
 - `icons/` – app icons (made once in Claude's workspace; plain PNGs).
@@ -90,6 +95,9 @@ no cloud, no analytics. All data stays on the user's Android phone.
 Before shipping, Claude tests in its workspace with headless Chromium, serving
 the files under a `/gym-tracker/` sub-folder like GitHub Pages: no console
 errors, installable, works offline, and a `VERSION` bump replaces the old one.
+Data changes are also tested as an upgrade from the previous released version,
+checking that saved data survives. (Test quirk: Python's test server answers
+"not modified" if two copies share a timestamp, so the test stamps each copy.)
 
 ## Checklist for every change
 1. Bump `VERSION` in `sw.js`.
@@ -168,13 +176,19 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (v1)
-- `exercises`: `{ id, name }`. Seeded ids are readable (`chest-press`); the id
-  never changes even if the name does.
-- `routines`: `{ id, name, items: [{ exerciseId, sets: {min,max},
-  reps: {min,max}, optional }] }`. E.g. "2-3x10-12" → sets 2–3, reps 10–12.
+## Data model (database version 1)
+- Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
+  (`db.js`). Each migration upgrades existing data one step; released
+  migrations are never edited or removed.
+- `exercises`: `{ id, name, note? }`. Seeded ids are readable (`chest-press`);
+  the id never changes even if the name does. `note` holds setup tips
+  (e.g. leg press: "Feet high, slightly wide").
+- `routines`: `{ id, name, subtitle?, order, items: [{ exerciseId,
+  sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "2-3x10-12" →
+  sets 2–3, reps 10–12. Ids: `upper`, `lower`.
 - `sets`: `{ id, date, exerciseId, routineId, setNo, weight, reps, savedAt }`,
-  indexed by `[exerciseId, date]` and by `date`.
+  indexed by `[exerciseId, date]` (`exercise_date`) and by `date`.
+- `meta`: `{ key, value }` for settings and bookkeeping (empty for now).
 - No separate "workout" record: a session = all sets of one exercise on one
   date. "Last session" = the most recent date *before* the selected date that
   has sets for that exercise.
@@ -185,7 +199,7 @@ progression hint, export/import; 3. Progress; 4. Body. Detailed plan (agreed,
 subject to change; mark items done as they ship):
 - [x] 1a. App shell: installable, offline, shows version, tab bar. Prove that
       install, airplane mode and updates all work before any data exists.
-- [ ] 1b. Data layer: IndexedDB + migrations, routines seeded, persistent storage.
+- [x] 1b. Data layer: IndexedDB + migrations, routines seeded, persistent storage.
 - [ ] 1c. Log screen: date, Upper/Lower, exercise list with last session,
       set rows prefilled, save, add/delete set.
 - [ ] 2a. Export/import (moved first: safety net before data piles up).
