@@ -1,5 +1,6 @@
 // App entry point.
-import { openDB, getRoutines, requestPersistentStorage } from './db.js';
+import { openDB, requestPersistentStorage } from './db.js';
+import { initLog } from './log.js';
 
 // ---- Tabs ----
 const titles = { log: 'Log', body: 'Body', progress: 'Progress' };
@@ -60,57 +61,23 @@ async function showVersion() {
 setupServiceWorker();
 
 // ---- Data ----
-// "3–3" reads better as "3".
-function range({ min, max }) {
-  return min === max ? String(min) : `${min}–${max}`;
-}
-
-async function showRoutines() {
-  const box = document.getElementById('routines');
-  box.replaceChildren();
-  for (const r of await getRoutines()) {
-    const card = document.createElement('div');
-    card.className = 'card';
-    const h = document.createElement('h2');
-    h.textContent = r.name;
-    if (r.subtitle) {
-      const sub = document.createElement('span');
-      sub.className = 'muted';
-      sub.textContent = ' · ' + r.subtitle;
-      h.append(sub);
-    }
-    const list = document.createElement('ul');
-    for (const it of r.items) {
-      const li = document.createElement('li');
-      const name = document.createElement('span');
-      name.textContent = it.exercise.name + (it.optional ? ' (optional)' : '');
-      const target = document.createElement('span');
-      target.className = 'muted';
-      target.textContent = `${range(it.sets)} × ${range(it.reps)}`;
-      li.append(name, target);
-      list.append(li);
-    }
-    card.append(h, list);
-    box.append(card);
-  }
-}
-
 async function showStorageStatus() {
   const el = document.getElementById('storage-status');
   const ok = await requestPersistentStorage();
-  el.textContent = ok
-    ? 'Storage: protected ✓ (Android won\'t clear your data)'
-    : 'Storage: not protected yet. Install the app to the home screen and open it from there.';
+  const asApp = matchMedia('(display-mode: standalone)').matches;
+  if (ok) el.textContent = 'Storage: protected ✓';
+  else if (asApp) el.textContent = 'Storage: not protected yet. Chrome decides this itself, often after the app has been used for a while; the app asks again each time it opens. Your sets are saved either way.';
+  else el.textContent = 'Storage: not protected yet. Open the app from its home-screen icon.';
 }
 
 async function startData() {
   try {
     await openDB();
-    await showRoutines();
+    await initLog(document.getElementById('log'));
     await showStorageStatus();
   } catch (err) {
     console.error(err);
-    document.getElementById('routines').textContent =
+    document.getElementById('log').textContent =
       'Could not open the database: ' + (err && err.message ? err.message : err);
   }
 }

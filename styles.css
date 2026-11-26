@@ -62,31 +62,226 @@ main {
 
 .muted { color: var(--muted); font-weight: 400; }
 
-.card {
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: 0.45; cursor: default; }
+.error { color: #a0153e; }
+
+/* ---- Log: list ---- */
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.date-label { color: var(--muted); font-weight: 600; }
+
+.date-input {
+  flex: 1;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.past-banner {
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 12px;
+  border: 2px dashed var(--pink);
+  border-radius: 14px;
+  background: none;
+  font-weight: 600;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.segmented button {
+  min-height: var(--tap);
+  border: 0;
+  border-radius: 999px;
   background: var(--surface);
-  border-radius: 16px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
-.card h2 {
-  margin: 0 0 8px;
-  font-size: 1.25rem;
+.segmented button[aria-pressed="true"] {
+  background: var(--pink);
+  color: var(--on-pink);
 }
 
-.card ul {
+.exercise-list {
   list-style: none;
-  margin: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.exercise {
+  width: 100%;
+  min-height: 72px;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  text-align: left;
+}
+
+/* Logged on this day: pink bar on the left. */
+.exercise.done { box-shadow: inset 6px 0 0 var(--pink); }
+
+.ex-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ex-name { font-size: 1.1rem; font-weight: 700; }
+.ex-last { font-variant-numeric: tabular-nums; }
+.ex-done { font-size: 0.9rem; font-weight: 700; }
+
+/* ---- Log: one exercise ---- */
+.back-btn {
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 700;
+}
+
+.ex-title { margin: 4px 0 0; font-size: 1.5rem; }
+.ex-sub { margin: 2px 0 4px; }
+.exercise-view .ex-last { margin: 0 0 12px; }
+.past-note { margin: 0 0 12px; font-weight: 600; }
+
+.saved-sets {
+  list-style: none;
+  margin: 0 0 12px;
   padding: 0;
 }
 
-.card li {
+.saved-sets li {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: 8px 0;
+  min-height: var(--tap);
   border-top: 1px solid var(--line);
 }
+
+.set-no {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--pink);
+  font-weight: 700;
+}
+
+.set-val {
+  flex: 1;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-check { font-weight: 700; }
+
+.icon-btn {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font-size: 1.2rem;
+}
+
+.editor, .all-done {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 1.1rem;
+}
+
+.stepper { display: grid; gap: 4px; }
+.stepper-label { color: var(--muted); font-weight: 600; font-size: 0.9rem; }
+
+.stepper-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 64px;
+  gap: 8px;
+  align-items: center;
+}
+
+.step {
+  height: 64px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--bg);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.num-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.num {
+  width: 4.2ch;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 2.4rem;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.num:focus { outline: none; border-bottom-color: var(--pink); }
+.unit { color: var(--muted); font-weight: 600; }
+
+.primary, .secondary {
+  min-height: 64px;
+  border: 0;
+  border-radius: 16px;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.primary { background: var(--pink); color: var(--on-pink); }
+.secondary { background: var(--bg); }
+.all-done-text { margin: 0; font-size: 1.2rem; font-weight: 700; text-align: center; }
 
 .placeholder {
   color: var(--muted);

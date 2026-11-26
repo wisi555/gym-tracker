@@ -27,6 +27,19 @@ const MIGRATIONS = [
     const routines = tx.objectStore('routines');
     for (const r of DEFAULT_ROUTINES) routines.add(r);
   },
+
+  // v2: remove machine setup tips (the user doesn't want them shown).
+  (db, tx) => {
+    tx.objectStore('exercises').openCursor().onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (!cursor) return;
+      if ('note' in cursor.value) {
+        const { note, ...rest } = cursor.value;
+        cursor.update(rest);
+      }
+      cursor.continue();
+    };
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -81,6 +94,88 @@ export async function getRoutines() {
       ...r,
       items: r.items.map((it) => ({ ...it, exercise: byId.get(it.exerciseId) })),
     }));
+}
+
+// ---- Sets (one record per saved set) ----
+
+// Walks a cursor, collecting records while keepGoing(record, collected) is true.
+function collect(req, keepGoing) {
+  return new Promise((resolve, reject) => {
+    const out = [];
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (cursor && keepGoing(cursor.value, out)) {
+        out.push(cursor.value);
+        cursor.continue();
+      } else {
+        resolve(out);
+      }
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+const bySetOrder = (a, b) => a.setNo - b.setNo || a.savedAt - b.savedAt;
+
+// All sets of one exercise on one date, in order.
+export async function getSetsOn(exerciseId, date) {
+  const db = await openDB();
+  const index = db.transaction('sets').objectStore('sets').index('exercise_date');
+  const sets = await done(index.getAll(IDBKeyRange.only([exerciseId, date])));
+  return sets.sort(bySetOrder);
+}
+
+// The most recent session of an exercise strictly before `date`:
+// { date, sets } or null if there is none.
+export async function getLastSession(exerciseId, date) {
+  const db = await openDB();
+  const index = db.transaction('sets').objectStore('sets').index('exercise_date');
+  // Every [exerciseId, earlier date], newest first.
+  const range = IDBKeyRange.bound([exerciseId, ''], [exerciseId, date], false, true);
+  const sets = await collect(index.openCursor(range, 'prev'),
+    (set, found) => found.length === 0 || set.date === found[0].date);
+  if (!sets.length) return null;
+  return { date: sets[0].date, sets: sets.sort(bySetOrder) };
+}
+
+// All sets on a date (any exercise), oldest saved first.
+export async function getSetsByDate(date) {
+  const db = await openDB();
+  const index = db.transaction('sets').objectStore('sets').index('date');
+  const sets = await done(index.getAll(IDBKeyRange.only(date)));
+  return sets.sort((a, b) => a.savedAt - b.savedAt);
+}
+
+// The set with the latest date, or null.
+export async function getLatestSet() {
+  const db = await openDB();
+  const index = db.transaction('sets').objectStore('sets').index('date');
+  const [set] = await collect(index.openCursor(null, 'prev'), (_, found) => found.length === 0);
+  return set || null;
+}
+
+// Saves a set; resolves once it is safely written.
+export async function addSet(set) {
+  const db = await openDB();
+  const tx = db.transaction('sets', 'readwrite');
+  const req = tx.objectStore('sets').add(set);
+  await txDone(tx);
+  return req.result;
+}
+
+export async function deleteSet(id) {
+  const db = await openDB();
+  const tx = db.transaction('sets', 'readwrite');
+  tx.objectStore('sets').delete(id);
+  await txDone(tx);
+}
+
+function txDone(tx) {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }
 
 // Ask the phone to treat our data as important, so Android won't clear it

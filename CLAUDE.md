@@ -82,8 +82,9 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `styles.css` – all styling; colors are variables at the top.
 - `app.js` – app logic; registers the service worker, shows the version,
   renders the screens.
-- `db.js` – the database: opening it, the `MIGRATIONS` list, read helpers,
-  persistent-storage request.
+- `db.js` – the database: opening it, the `MIGRATIONS` list, read/write
+  helpers for sets, persistent-storage request.
+- `log.js` – the Log tab (date, routine switch, exercise list, set editor).
 - `defaults.js` – starting exercises/routines, used only by migration v1.
   Never edit after release; changes go in a new migration in `db.js`.
 - `sw.js` – service worker: `VERSION`, precache list, offline + updates.
@@ -120,10 +121,20 @@ checking that saved data survives. (Test quirk: Python's test server answers
 ### 1. Log
 - Pick a routine (Upper or Lower); exercises can be picked = done in any
   order, and any can be skipped.
-- Logging screen: one row per set, prefilled from last time (or the routine's
-  minimum set count if there's no history). Big − / + buttons: **2.5 kg** for
-  weight, **1** for reps; tapping the number lets you type it. "+ Add set".
-- A saved set can be deleted (with confirmation) so typos don't stay forever.
+- No machine setup tips (user asked to skip them).
+- List: date (default today, max today), Upper/Lower switch, one card per
+  exercise with target, last session ("Fri, Nov 20: 40×12 · 40×11") and
+  "✓ N sets today". Default routine: the one already logged on that date,
+  else the one after the last routine done (Upper → Lower → Upper).
+- Exercise screen: saved sets listed (pink number, ✓, 🗑 delete with
+  confirmation), then one editor for the **next** set: "Set 2 of 3",
+  big − / + buttons (**2.5 kg** weight, **1** rep), tap the number to type it
+  (a comma "22,5" is accepted), big "Save set". Planned sets = max(last
+  session's count, routine minimum); after that "+ Add set".
+- Prefill for set N: last session's set N. If you changed the weight on your
+  previous set today, that weight carries forward. No history: weight empty,
+  reps = range minimum.
+- The phone's back gesture returns from an exercise to the list.
 - Beside each exercise, show last session's weight and reps per set.
 - New sets are prefilled with last time's numbers; adjust and tap to save.
 - Progression hint: if the top of the rep range was hit on all sets last time,
@@ -176,13 +187,14 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 1)
+## Data model (database version 2)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
-- `exercises`: `{ id, name, note? }`. Seeded ids are readable (`chest-press`);
-  the id never changes even if the name does. `note` holds setup tips
-  (e.g. leg press: "Feet high, slightly wide").
+- `exercises`: `{ id, name }`. Seeded ids are readable (`chest-press`);
+  the id never changes even if the name does.
+- Migration history: v1 created the stores and seeded routines (with a leg
+  press setup `note`); v2 removed `note` fields.
 - `routines`: `{ id, name, subtitle?, order, items: [{ exerciseId,
   sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "2-3x10-12" →
   sets 2–3, reps 10–12. Ids: `upper`, `lower`.
@@ -200,7 +212,7 @@ subject to change; mark items done as they ship):
 - [x] 1a. App shell: installable, offline, shows version, tab bar. Prove that
       install, airplane mode and updates all work before any data exists.
 - [x] 1b. Data layer: IndexedDB + migrations, routines seeded, persistent storage.
-- [ ] 1c. Log screen: date, Upper/Lower, exercise list with last session,
+- [x] 1c. Log screen: date, Upper/Lower, exercise list with last session,
       set rows prefilled, save, add/delete set.
 - [ ] 2a. Export/import (moved first: safety net before data piles up).
 - [ ] 2b. Rest timer (2 min).
@@ -212,3 +224,6 @@ subject to change; mark items done as they ship):
 
 ## Open questions
 - Progress section: what it should show.
+- Persistent storage: on the user's phone Chrome said "not protected" at v3
+  (installed app). The app re-asks on every launch. Watch it; export/import
+  (2a) is the safety net either way.
