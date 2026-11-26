@@ -3,7 +3,7 @@
 // RULE: bump VERSION on every change to any app file. A new VERSION makes the
 // browser see a changed sw.js, install it, download all files fresh into a new
 // cache, delete the old cache, and reload the app.
-const VERSION = '5';
+const VERSION = '6';
 const CACHE_PREFIX = 'gym-tracker-';
 const CACHE = CACHE_PREFIX + 'v' + VERSION;
 
@@ -16,6 +16,8 @@ const FILES = [
   './db.js',
   './log.js',
   './settings.js',
+  './install.js',
+  './timer.js',
   './ui.js',
   './defaults.js',
   './manifest.webmanifest',

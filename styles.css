@@ -14,6 +14,9 @@
 
 * { box-sizing: border-box; }
 
+/* Hidden always means hidden, whatever display a class sets. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -361,6 +364,46 @@ button:disabled { opacity: 0.45; cursor: default; }
   color: var(--muted);
   text-align: center;
   margin-top: 30vh;
+}
+
+/* ---- Rest timer bar (above the tabs) ---- */
+.rest-bar {
+  background: var(--pink);
+  color: var(--on-pink);
+}
+
+.rest-track { height: 4px; background: rgba(255, 255, 255, 0.5); }
+.rest-fill { height: 100%; width: 100%; background: var(--on-pink); }
+
+.rest-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 16px;
+}
+
+.rest-label { font-weight: 700; }
+
+.rest-time {
+  margin-right: auto;
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.rest-bar.done .rest-row { min-height: 64px; justify-content: center; }
+.rest-bar.done .rest-label { font-size: 1.2rem; }
+
+.rest-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  font-weight: 700;
 }
 
 /* Bottom tab bar: within thumb reach, one-handed. */

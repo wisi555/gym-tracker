@@ -5,6 +5,7 @@ import {
   getRoutines, getSetsOn, getLastSession, getSetsByDate, getLatestSet, addSet, deleteSet,
 } from './db.js';
 import { h, icon, todayStr, shortDate } from './ui.js';
+import { startRest } from './timer.js';
 
 const WEIGHT_STEP = 2.5;
 const REPS_STEP = 1;
@@ -259,8 +260,12 @@ function editor({ item, done, next, planned, lastSets }) {
       savedAt: Date.now(),
     });
     if (navigator.vibrate) navigator.vibrate(30); // tiny buzz = saved
+    startRest();
     state.extraSet = false;
-    render();
+    // Keep the next set's Save button in view above the timer bar.
+    await render();
+    const next = root.querySelector('.editor, .all-done');
+    if (next) next.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
 
   const lastHere = lastSets[next];

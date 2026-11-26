@@ -1,52 +1,9 @@
-// Settings screen: backup (export/import), install help, storage, version.
+// Settings screen: backup (export/import), storage status, version.
 
 import {
   exportAll, parseBackup, replaceAll, getMeta, setMeta, countSets, getLatestSet,
 } from './db.js';
-import { h, icon, todayStr, shortDate, isInstalledApp } from './ui.js';
-
-// ---- Install ----
-// Chrome fires 'beforeinstallprompt' when the app can be installed. We keep
-// it so our own "Install app" button can open Chrome's install dialog.
-let installPrompt = null;
-window.addEventListener('beforeinstallprompt', (event) => {
-  event.preventDefault();
-  installPrompt = event;
-  refreshInstallBanner();
-});
-window.addEventListener('appinstalled', () => {
-  installPrompt = null;
-  refreshInstallBanner();
-});
-
-async function install() {
-  if (!installPrompt) return;
-  installPrompt.prompt();
-  await installPrompt.userChoice;
-  installPrompt = null;
-  refreshInstallBanner();
-}
-
-let openSettingsFn = () => {};
-
-// Small banner on the Log tab, only when running inside the browser.
-export function setupInstallBanner(openSettings) {
-  openSettingsFn = openSettings;
-  refreshInstallBanner();
-}
-
-function refreshInstallBanner() {
-  const banner = document.getElementById('install-banner');
-  if (!banner) return;
-  banner.hidden = isInstalledApp();
-  banner.replaceChildren(
-    h('span', {}, 'You\'re using the browser version.'),
-    h('button', {
-      type: 'button', class: 'banner-btn',
-      onclick: () => (installPrompt ? install() : openSettingsFn()),
-    }, icon('install'), installPrompt ? 'Install app' : 'How to install'),
-  );
-}
+import { h, icon, todayStr, shortDate } from './ui.js';
 
 // ---- Backup files ----
 
@@ -124,8 +81,6 @@ export async function renderSettings(container, version) {
     },
   });
 
-  const installed = isInstalledApp();
-
   container.replaceChildren(
     h('div', { class: 'settings' },
       h('h2', {}, 'Backup'),
@@ -147,17 +102,6 @@ export async function renderSettings(container, version) {
 
       h('h2', {}, 'App'),
       h('div', { class: 'panel' },
-        installed
-          ? h('p', { class: 'big-line' }, icon('check'), ' Installed')
-          : [
-            h('p', { class: 'big-line' }, 'Running in the browser'),
-            installPrompt
-              ? h('button', { type: 'button', class: 'primary', onclick: install }, icon('install'), 'Install app')
-              : h('p', { class: 'muted' },
-                'In Chrome: tap the menu (⋮) → "Add to home screen" → choose "Install" '
-                + '(not "Create shortcut"). If Gym Tracker is already installed, '
-                + 'open it from your app drawer instead of the browser.'),
-          ],
         h('p', {}, persisted
           ? 'Storage: protected — Android won\'t clear your data.'
           : 'Storage: not protected yet. Chrome decides this itself, often once the app is '

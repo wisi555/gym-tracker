@@ -1,7 +1,9 @@
 // App entry point.
 import { openDB, requestPersistentStorage } from './db.js';
 import { initLog } from './log.js';
-import { renderSettings, setupInstallBanner } from './settings.js';
+import { renderSettings } from './settings.js';
+import { refreshInstallBanner } from './install.js';
+import { initTimer } from './timer.js';
 
 let version = '…';
 
@@ -85,11 +87,13 @@ async function showVersion() {
 setupServiceWorker();
 
 // ---- Data ----
+initTimer();
+
 async function startData() {
   try {
     await openDB();
     await initLog(document.getElementById('log'));
-    setupInstallBanner(openSettings);
+    refreshInstallBanner();
     requestPersistentStorage(); // ask Android to protect our data (see Settings)
   } catch (err) {
     console.error(err);

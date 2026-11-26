@@ -53,8 +53,10 @@ no cloud, no analytics. All data stays on the user's Android phone.
   `ui.js` (`icon('check')`, `trash`, `back`, `plus`, `minus`, `download`,
   `upload`, `install`): 24×24 SVG strokes in the text color. Add new ones there.
 - **Header:** title, version, and a settings button (sliders icon) that opens
-  the Settings screen (backup, install, storage, version). The phone's back
-  gesture closes it.
+  the Settings screen (backup, storage status, version). The phone's back
+  gesture closes it. **No install status in Settings** (user found it
+  pointless). Install help lives only in the Log tab's "browser version"
+  banner (`install.js`): Install button, or the steps in a pop-up.
 
 ### Update mechanism (how new versions reach the installed app)
 - `sw.js` holds one `VERSION` constant. The cache name includes it. The app
@@ -91,8 +93,9 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `db.js` – the database: opening it, the `MIGRATIONS` list, read/write
   helpers for sets, persistent-storage request.
 - `log.js` – the Log tab (date, routine switch, exercise list, set editor).
-- `settings.js` – Settings screen: export/import, install button/help,
-  storage status, version; also the "browser version" install banner.
+- `settings.js` – Settings screen: export/import, storage status, version.
+- `install.js` – "browser version" banner with Install button / steps.
+- `timer.js` – rest timer bar.
 - `ui.js` – shared helpers: `h()` element builder, `icon()`, dates,
   `isInstalledApp()`.
 - `defaults.js` – starting exercises/routines, used only by migration v1.
@@ -149,7 +152,12 @@ checking that saved data survives. (Test quirk: Python's test server answers
 - New sets are prefilled with last time's numbers; adjust and tap to save.
 - Progression hint: if the top of the rep range was hit on all sets last time,
   suggest adding weight.
-- Rest timer after each set: 2 min.
+- Rest timer after each set: 2 min (`timer.js`). Pink bar above the tabs:
+  countdown, "+30s", "Skip"; restarts on each saved set. Counts toward a fixed
+  end time; screen kept awake while it runs (Wake Lock); at zero a short
+  double vibration and "Rest over · next set" for 5 s. **No sound** (user may
+  decide later). Survives the update reload via `sessionStorage`. If the app
+  was away over a minute past zero, it just hides (no late buzz).
 - The workout date can be changed, so past sessions can be entered.
 
 ### 2. Body
@@ -236,12 +244,16 @@ subject to change; mark items done as they ship):
 - [x] 1c. Log screen: date, Upper/Lower, exercise list with last session,
       set rows prefilled, save, add/delete set.
 - [x] 2a. Export/import (moved first: safety net before data piles up).
-- [ ] 2b. Rest timer (2 min).
+- [x] 2b. Rest timer (2 min).
 - [ ] 2c. Progression hint.
 - [ ] 3. Body: morning weight + 7-day average, then macros entry.
       (Moved before Progress: the average needs data to build up.)
 - [ ] 4. Routine/exercise editor (add, rename keeping history).
 - [ ] 5. Progress section (define first).
+
+## Status notes
+- As of v6 the user has entered **no real workout data** (building in one
+  session, not yet at the gym). Anything on the phone is test data.
 
 ## Open questions
 - Progress section: what it should show.
