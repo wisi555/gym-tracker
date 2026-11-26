@@ -4,7 +4,9 @@
 import {
   getRoutines, getSetsOn, getLastSession, getSetsByDate, getLatestSet, addSet, deleteSet,
 } from './db.js';
-import { h, icon, todayStr, shortDate } from './ui.js';
+import {
+  h, icon, todayStr, shortDate, round2, fmtNum as fmtWeight, stepper,
+} from './ui.js';
 import { startRest } from './timer.js';
 
 const WEIGHT_STEP = 2.5;
@@ -12,8 +14,6 @@ const REPS_STEP = 1;
 
 // ---- Small helpers ----
 
-const round2 = (n) => Math.round(n * 100) / 100;
-const fmtWeight = (w) => String(round2(w)); // 40, 22.5
 
 // The user's way of writing sets: reps first, then weight.
 // One set: "10 reps – 45 kg".
@@ -45,14 +45,6 @@ function progressionHint(item, last) {
 }
 const range = ({ min, max }) => (min === max ? String(min) : `${min}–${max}`);
 const target = (item) => `${range(item.sets)} × ${range(item.reps)}`;
-
-// Reads a typed number. Accepts "22,5" too (many Android keyboards type a
-// comma as the decimal mark). Returns null if empty, NaN if not a number.
-function parseNum(text) {
-  const t = text.trim().replace(',', '.');
-  if (t === '') return null;
-  return /^\d*\.?\d+$|^\d+\.$/.test(t) ? Number(t) : NaN;
-}
 
 const validWeight = (w) => typeof w === 'number' && Number.isFinite(w) && w >= 0;
 const validReps = (r) => Number.isInteger(r) && r >= 1;
@@ -334,35 +326,4 @@ function editor({ item, done, next, planned, lastSets }) {
   );
   refresh();
   return view;
-}
-
-// [ − ]  40 kg  [ + ]   (tap the number to type it)
-function stepper({ label, unit, step, decimal, value, onChange }) {
-  const show = (v) => (v == null || Number.isNaN(v) ? '' : fmtWeight(v));
-  const input = h('input', {
-    type: 'text', class: 'num', value: show(value), placeholder: '–',
-    inputmode: decimal ? 'decimal' : 'numeric', enterkeyhint: 'done', 'aria-label': label,
-    autocomplete: 'off',
-  });
-  const set = (v) => { value = v; input.value = show(v); onChange(v); };
-  const base = () => (validWeight(value) ? value : 0);
-
-  input.addEventListener('focus', () => input.select());
-  input.addEventListener('input', () => { value = parseNum(input.value); onChange(value); });
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
-
-  return h('div', { class: 'stepper' },
-    h('span', { class: 'stepper-label' }, label),
-    h('div', { class: 'stepper-row' },
-      h('button', {
-        type: 'button', class: 'step', 'aria-label': `${label} minus ${step}`,
-        onclick: () => set(Math.max(0, round2(base() - step))),
-      }, icon('minus', 'icon icon-lg')),
-      h('label', { class: 'num-wrap' }, input, h('span', { class: 'unit' }, unit)),
-      h('button', {
-        type: 'button', class: 'step', 'aria-label': `${label} plus ${step}`,
-        onclick: () => set(round2(base() + step)),
-      }, icon('plus', 'icon icon-lg')),
-    ),
-  );
 }

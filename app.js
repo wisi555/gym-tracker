@@ -1,11 +1,17 @@
 // App entry point.
 import { openDB, requestPersistentStorage } from './db.js';
 import { initLog } from './log.js';
+import { initBody } from './body.js';
 import { renderSettings } from './settings.js';
 import { refreshInstallBanner } from './install.js';
 import { initTimer } from './timer.js';
 
 let version = '…';
+
+// The app always starts on the Log list. If it was reloaded (e.g. for an
+// update) while an exercise or Settings was open, forget that leftover
+// "back" step, or the next back gesture would do nothing.
+if (history.state) history.replaceState(null, '');
 
 // ---- Tabs and the settings screen ----
 const titles = { log: 'Log', body: 'Body', progress: 'Progress', settings: 'Settings' };
@@ -93,6 +99,7 @@ async function startData() {
   try {
     await openDB();
     await initLog(document.getElementById('log'));
+    await initBody(document.getElementById('body'));
     refreshInstallBanner();
     requestPersistentStorage(); // ask Android to protect our data (see Settings)
   } catch (err) {

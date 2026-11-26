@@ -52,7 +52,63 @@ export function shortDate(str) {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+// 'YYYY-MM-DD' moved by n days (n can be negative).
+export function addDays(str, n) {
+  const [y, m, d] = str.split('-').map(Number);
+  const date = new Date(y, m - 1, d + n);
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${mm}-${dd}`;
+}
+
 // True when running as the installed app (no browser address bar).
 export function isInstalledApp() {
   return matchMedia('(display-mode: standalone)').matches;
+}
+
+// ---- Numbers ----
+
+export const round2 = (n) => Math.round(n * 100) / 100;
+export const fmtNum = (n) => String(round2(n)); // 40, 22.5, 62.4
+
+// Reads a typed number. Accepts "22,5" too (many Android keyboards type a
+// comma as the decimal mark). Returns null if empty, NaN if not a number.
+function parseNum(text) {
+  const t = text.trim().replace(',', '.');
+  if (t === '') return null;
+  return /^\d*\.?\d+$|^\d+\.$/.test(t) ? Number(t) : NaN;
+}
+
+
+const validNumber = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
+
+// [ − ]  40 kg  [ + ]   (tap the number to type it)
+export function stepper({ label, unit, step, decimal, value, onChange }) {
+  const show = (v) => (v == null || Number.isNaN(v) ? '' : fmtNum(v));
+  const input = h('input', {
+    type: 'text', class: 'num', value: show(value), placeholder: '–',
+    inputmode: decimal ? 'decimal' : 'numeric', enterkeyhint: 'done', 'aria-label': label,
+    autocomplete: 'off',
+  });
+  const set = (v) => { value = v; input.value = show(v); onChange(v); };
+  const base = () => (validNumber(value) ? value : 0);
+
+  input.addEventListener('focus', () => input.select());
+  input.addEventListener('input', () => { value = parseNum(input.value); onChange(value); });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+
+  return h('div', { class: 'stepper' },
+    h('span', { class: 'stepper-label' }, label),
+    h('div', { class: 'stepper-row' },
+      h('button', {
+        type: 'button', class: 'step', 'aria-label': `${label} minus ${step}`,
+        onclick: () => set(Math.max(0, round2(base() - step))),
+      }, icon('minus', 'icon icon-lg')),
+      h('label', { class: 'num-wrap' }, input, h('span', { class: 'unit' }, unit)),
+      h('button', {
+        type: 'button', class: 'step', 'aria-label': `${label} plus ${step}`,
+        onclick: () => set(round2(base() + step)),
+      }, icon('plus', 'icon icon-lg')),
+    ),
+  );
 }

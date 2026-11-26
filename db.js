@@ -82,6 +82,11 @@ const MIGRATIONS = [
       cursor.continue();
     };
   },
+
+  // v5: morning weigh-ins, one per day: { date, weight, savedAt }.
+  (db) => {
+    db.createObjectStore('weights', { keyPath: 'date' });
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -94,6 +99,7 @@ const BACKUP_MIGRATIONS = {
   1: (data) => { data.exercises = data.exercises.map(({ note, ...rest }) => rest); },
   2: (data) => { data.routines = data.routines.map(capRepsAt10); },
   3: (data) => { data.routines = data.routines.map(capAllRepsAt10); },
+  4: (data) => { data.weights = []; },
 };
 
 let dbPromise = null;
@@ -230,6 +236,30 @@ function txDone(tx) {
   });
 }
 
+// ---- Morning weigh-ins ----
+
+// All weigh-ins, newest first.
+export async function getWeights() {
+  const db = await openDB();
+  const all = await done(db.transaction('weights').objectStore('weights').getAll());
+  return all.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+// One weight per day: saving again for the same date replaces it.
+export async function saveWeight(date, weight) {
+  const db = await openDB();
+  const tx = db.transaction('weights', 'readwrite');
+  tx.objectStore('weights').put({ date, weight, savedAt: Date.now() });
+  await txDone(tx);
+}
+
+export async function deleteWeight(date) {
+  const db = await openDB();
+  const tx = db.transaction('weights', 'readwrite');
+  tx.objectStore('weights').delete(date);
+  await txDone(tx);
+}
+
 // ---- Small settings ("meta" store) ----
 
 export async function getMeta(key) {
@@ -252,7 +282,9 @@ export async function countSets() {
 
 // ---- Backup: export / import ----
 
-const STORES = ['exercises', 'routines', 'sets', 'meta'];
+const STORES = ['exercises', 'routines', 'sets', 'meta', 'weights'];
+// Stores every backup has had since version 1.
+const FIRST_STORES = ['exercises', 'routines', 'sets', 'meta'];
 // Settings about this phone, not part of your data (kept when importing).
 const DEVICE_ONLY = ['lastBackup'];
 
@@ -283,10 +315,10 @@ export function parseBackup(text) {
     throw new Error('This backup was made by a newer version of the app. Open the app with internet on so it updates, then try again.');
   }
   const data = structuredClone(file.data);
-  for (const name of STORES) {
-    if (!Array.isArray(data[name])) throw new Error(`This backup is damaged (missing ${name}).`);
-  }
+  const missing = (name) => { throw new Error(`This backup is damaged (missing ${name}).`); };
+  for (const name of FIRST_STORES) if (!Array.isArray(data[name])) missing(name);
   for (let v = from; v < SCHEMA_VERSION; v++) BACKUP_MIGRATIONS[v](data);
+  for (const name of STORES) if (!Array.isArray(data[name])) missing(name);
   checkData(data);
   return { data, exportedAt: file.exportedAt };
 }
@@ -311,6 +343,10 @@ function checkData(data) {
     if (!Number.isInteger(set.reps) || set.reps < 0) bad('a set has bad reps');
   }
   for (const row of data.meta) if (!isText(row.key)) bad('a setting has no name');
+  for (const w of data.weights) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(w.date)) bad('a weigh-in has a bad date');
+    if (typeof w.weight !== 'number' || !(w.weight > 0)) bad('a weigh-in has a bad weight');
+  }
 }
 
 // Replaces ALL data with `data` in one step: if anything fails, nothing

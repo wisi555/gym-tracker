@@ -93,11 +93,13 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `db.js` – the database: opening it, the `MIGRATIONS` list, read/write
   helpers for sets, persistent-storage request.
 - `log.js` – the Log tab (date, routine switch, exercise list, set editor).
+- `body.js` – the Body tab (7-day average, weigh-in editor, last 14 days).
 - `settings.js` – Settings screen: export/import, storage status, version.
 - `install.js` – "browser version" banner with Install button / steps.
 - `timer.js` – rest timer bar.
-- `ui.js` – shared helpers: `h()` element builder, `icon()`, dates,
-  `isInstalledApp()`.
+- `ui.js` – shared helpers: `h()` element builder, `icon()`, dates
+  (`todayStr`, `shortDate`, `addDays`), numbers (`round2`, `fmtNum`,
+  `parseNum`), the − / + `stepper()`, `isInstalledApp()`.
 - `defaults.js` – starting exercises/routines, used only by migration v1.
   Never edit after release; changes go in a new migration in `db.js`.
 - `sw.js` – service worker: `VERSION`, precache list, offline + updates.
@@ -152,7 +154,9 @@ checking that saved data survives. (Test quirk: Python's test server answers
 - Prefill for set N: last session's set N. If you changed the weight on your
   previous set today, that weight carries forward. No history: weight empty,
   reps = range minimum.
-- The phone's back gesture returns from an exercise to the list.
+- The phone's back gesture returns from an exercise to the list. On start
+  the app clears any leftover history entry (`history.replaceState`) so the
+  back gesture works right after an update reload.
 - Beside each exercise, show last session's weight and reps per set.
 - New sets are prefilled with last time's numbers; adjust and tap to save.
 - Progression hint: if the top of the rep range was hit on all sets last time,
@@ -171,10 +175,13 @@ checking that saved data survives. (Test quirk: Python's test server answers
 
 ### 2. Body
 - Morning weight; show the 7-day average as the main number.
-- Agreed so far: − / + steps of **0.1 kg**; one weight per day (saving again
-  replaces it); date can be changed to fill in a missed morning; last 14
-  days listed with delete. **No extra text lines** like "−0.4 kg vs last
-  week" (clutter).
+- Built (`body.js`): big pink card "7-day average 62.4 kg" (mean of
+  weigh-ins dated today and the 6 days before; "–" if none). Editor: date
+  (default today, max today), "Morning weight" stepper with **0.1 kg** steps,
+  starting from that day's weigh-in or the nearest earlier one; "Save weight"
+  / "Update weight". One weight per day (saving again replaces it). "Last 14
+  days" list (one decimal, e.g. "62.0 kg") with trash icon + confirm.
+  **No extra text lines** like "−0.4 kg vs last week" (clutter).
 - Future idea (user would love it, later): a **chart of historical weekly
   average weight**.
 - Macros tracking: the user enters the day's food in their own Claude session,
@@ -221,7 +228,10 @@ Lower (glute focus):
 Export all data to a JSON file, and import it back.
 - File: `gym-tracker-backup-YYYY-MM-DD.json` =
   `{ app: 'gym-tracker', schemaVersion, exportedAt, data: { exercises,
-  routines, sets, meta } }`. Saved to Downloads.
+  routines, sets, meta, weights } }`. Saved to Downloads.
+- Import checks the stores every backup has (`FIRST_STORES`), runs
+  `BACKUP_MIGRATIONS`, then checks all `STORES`. New stores go in `STORES`
+  and get a backup migration that adds them empty.
 - Import: file is checked (clear messages if not a backup, damaged, or from a
   newer app version), older backups are upgraded with `BACKUP_MIGRATIONS`
   in `db.js`, the user confirms a summary, a safety copy
@@ -235,7 +245,7 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 4)
+## Data model (database version 5)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
@@ -244,13 +254,15 @@ complex dashboards, etc. Keeping it simple for now.
 - Migration history: v1 created the stores and seeded routines (with a leg
   press setup `note`); v2 removed `note` fields; v3 capped rep ranges at 10
   (`capRepsAt10`, also used by `BACKUP_MIGRATIONS[2]`); v4 capped every
-  range at 10 (`capAllRepsAt10`, `BACKUP_MIGRATIONS[3]`).
+  range at 10 (`capAllRepsAt10`, `BACKUP_MIGRATIONS[3]`); v5 added the
+  `weights` store (`BACKUP_MIGRATIONS[4]` adds an empty list).
 - `routines`: `{ id, name, subtitle?, order, items: [{ exerciseId,
   sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "2-3x10-12" →
   sets 2–3, reps 10–12. Ids: `upper`, `lower`.
 - `sets`: `{ id, date, exerciseId, routineId, setNo, weight, reps, savedAt }`,
   indexed by `[exerciseId, date]` (`exercise_date`) and by `date`.
-- `meta`: `{ key, value }` for settings and bookkeeping (empty for now).
+- `meta`: `{ key, value }` for settings and bookkeeping (`lastBackup`).
+- `weights`: `{ date, weight, savedAt }`, key = `date` (one per day).
 - No separate "workout" record: a session = all sets of one exercise on one
   date. "Last session" = the most recent date *before* the selected date that
   has sets for that exercise.
@@ -267,8 +279,10 @@ subject to change; mark items done as they ship):
 - [x] 2a. Export/import (moved first: safety net before data piles up).
 - [x] 2b. Rest timer (2 min).
 - [x] 2c. Progression hint.
-- [ ] 3. Body: morning weight + 7-day average, then macros entry.
+- [x] 3a. Body: morning weight + 7-day average.
       (Moved before Progress: the average needs data to build up.)
+- [ ] 3b. Body: macros entry (plan first; ask what the user's Claude
+      session outputs so it can be a quick paste).
 - [ ] 4. Routine/exercise editor (add, rename keeping history).
 - [ ] 5. Progress section (define first).
 
