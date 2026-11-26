@@ -228,6 +228,20 @@ button:disabled { opacity: 0.45; cursor: default; }
 .ex-name { font-size: 1.1rem; font-weight: 700; }
 .ex-last { font-variant-numeric: tabular-nums; }
 .ex-done { font-size: 0.9rem; font-weight: 700; }
+.ex-hint { font-size: 0.9rem; font-weight: 700; }
+.ex-hint .icon { width: 1.1em; height: 1.1em; stroke-width: 2.5; }
+
+.hint {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 2px solid var(--pink);
+  border-radius: 20px;
+}
+
+.hint p { margin: 0; font-weight: 700; }
+.hint .secondary { background: var(--pink); }
 
 /* ---- Log: one exercise ---- */
 .back-btn {
@@ -252,7 +266,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .saved-sets li {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-height: var(--tap);
   border-top: 1px solid var(--line);
 }
@@ -269,7 +283,9 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 .set-val {
   flex: 1;
-  font-size: 1.25rem;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 1.1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -295,10 +311,14 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 .editor-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
+  gap: 2px 12px;
   font-size: 1.1rem;
 }
+
+.editor-head strong { white-space: nowrap; }
 
 .stepper { display: grid; gap: 4px; }
 .stepper-label { color: var(--muted); font-weight: 600; font-size: 0.9rem; }

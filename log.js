@@ -14,7 +14,35 @@ const REPS_STEP = 1;
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const fmtWeight = (w) => String(round2(w)); // 40, 22.5
-const fmtSet = (s) => `${fmtWeight(s.weight)}×${s.reps}`;
+
+// The user's way of writing sets: reps first, then weight.
+// One set: "10 reps – 45 kg".
+const fmtOne = (s) => `${s.reps} reps – ${fmtWeight(s.weight)} kg`;
+
+// A session, grouped by weight: "3×10 – 45 kg", "10, 9, 8 reps – 45 kg",
+// or several groups: "2×10 – 45 kg · 1×8 – 42.5 kg".
+function fmtSession(sets) {
+  const groups = [];
+  for (const s of sets) {
+    const g = groups[groups.length - 1];
+    if (g && g.weight === s.weight) g.reps.push(s.reps);
+    else groups.push({ weight: s.weight, reps: [s.reps] });
+  }
+  return groups.map(({ weight, reps }) => {
+    const same = reps.every((r) => r === reps[0]);
+    const repsText = same ? `${reps.length}×${reps[0]}` : `${reps.join(', ')} reps`;
+    return `${repsText} – ${fmtWeight(weight)} kg`;
+  }).join(' · ');
+}
+
+// Progression hint: last session had at least the minimum number of sets and
+// every set reached the top of the rep range → suggest +2.5 kg on the top weight.
+function progressionHint(item, last) {
+  if (!last || last.sets.length < item.sets.min) return null;
+  if (!last.sets.every((s) => s.reps >= item.reps.max)) return null;
+  const top = Math.max(...last.sets.map((s) => s.weight));
+  return { reps: item.reps.max, weight: round2(top + WEIGHT_STEP) };
+}
 const range = ({ min, max }) => (min === max ? String(min) : `${min}–${max}`);
 const target = (item) => `${range(item.sets)} × ${range(item.reps)}`;
 
@@ -171,7 +199,9 @@ async function listView() {
           h('span', { class: 'muted' }, target(item)),
         ),
         h('span', { class: 'ex-last' },
-          last ? `${shortDate(last.date)}: ${last.sets.map(fmtSet).join(' · ')}` : 'No history yet'),
+          last ? `${shortDate(last.date)}: ${fmtSession(last.sets)}` : 'No history yet'),
+        progressionHint(item, last) && done.length === 0 && h('span', { class: 'ex-hint' },
+          icon('up'), ' Add weight'),
         done.length > 0 && h('span', { class: 'ex-done' }, icon('check'),
           ` ${done.length} ${done.length === 1 ? 'set' : 'sets'} ${dayWord}`),
       ),
@@ -215,22 +245,24 @@ async function exerciseView() {
     h('h2', { class: 'ex-title' }, item.exercise.name),
     h('p', { class: 'muted ex-sub' }, `Target ${target(item)}`),
     h('p', { class: 'ex-last' },
-      last ? `Last (${shortDate(last.date)}): ${lastSets.map(fmtSet).join(' · ')}` : 'No history yet'),
+      last ? `Last (${shortDate(last.date)}): ${fmtSession(lastSets)}` : 'No history yet'),
     !isToday() && h('p', { class: 'past-note' }, `Logging for ${shortDate(state.date)}`),
 
     done.length > 0 && h('ol', { class: 'saved-sets' }, done.map((set, i) => h('li', {},
       h('span', { class: 'set-no' }, String(i + 1)),
-      h('span', { class: 'set-val' }, `${fmtWeight(set.weight)} kg × ${set.reps}`),
+      h('span', { class: 'set-val' }, fmtOne(set)),
       h('span', { class: 'set-check', title: 'Saved' }, icon('check')),
       h('button', {
         type: 'button', class: 'icon-btn', 'aria-label': `Delete set ${i + 1}`,
         onclick: async () => {
-          if (!confirm(`Delete set ${i + 1} (${fmtWeight(set.weight)} kg × ${set.reps})?`)) return;
+          if (!confirm(`Delete set ${i + 1} (${fmtOne(set)})?`)) return;
           await deleteSet(set.id);
           render();
         },
       }, icon('trash')),
     ))),
+
+    showEditor && hintCard(progressionHint(item, last), done),
 
     showEditor
       ? editor({ item, done, next, planned, lastSets })
@@ -239,6 +271,22 @@ async function exerciseView() {
         h('button', { type: 'button', class: 'secondary', onclick: () => { state.extraSet = true; render(); } }, icon('plus'), 'Add set'),
         h('button', { type: 'button', class: 'primary', onclick: backToList }, 'Back to exercises'),
       ),
+  );
+}
+
+// "10 reps on every set last time: try 47.5 kg  [Use 47.5 kg]".
+// Hidden once a set today already uses that weight or more.
+function hintCard(hint, done) {
+  if (!hint || done.some((s) => s.weight >= hint.weight)) return null;
+  const using = draft.weight === hint.weight;
+  return h('div', { class: 'hint' },
+    h('p', {}, icon('up'), ` ${hint.reps} reps on every set last time: try ${fmtWeight(hint.weight)} kg`),
+    using
+      ? h('p', { class: 'hint-using' }, icon('check'), ` Using ${fmtWeight(hint.weight)} kg`)
+      : h('button', {
+        type: 'button', class: 'secondary',
+        onclick: () => { draft.weight = hint.weight; render(); },
+      }, `Use ${fmtWeight(hint.weight)} kg`),
   );
 }
 
@@ -272,7 +320,7 @@ function editor({ item, done, next, planned, lastSets }) {
   const view = h('div', { class: 'editor' },
     h('div', { class: 'editor-head' },
       h('strong', {}, next < planned ? `Set ${next + 1} of ${planned}` : `Set ${next + 1} (extra)`),
-      lastHere && h('span', { class: 'muted' }, `last time ${fmtSet(lastHere)}`),
+      lastHere && h('span', { class: 'muted' }, `last time: ${fmtOne(lastHere)}`),
     ),
     stepper({
       label: 'Weight', unit: 'kg', step: WEIGHT_STEP, decimal: true, value: draft.weight,

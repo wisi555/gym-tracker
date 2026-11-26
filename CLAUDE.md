@@ -51,7 +51,7 @@ no cloud, no analytics. All data stays on the user's Android phone.
   `styles.css`. Light theme only (for now). Icons match: plum dumbbell on pink.
 - **No emoji or symbol characters as icons.** Use the minimal line icons in
   `ui.js` (`icon('check')`, `trash`, `back`, `plus`, `minus`, `download`,
-  `upload`, `install`): 24×24 SVG strokes in the text color. Add new ones there.
+  `upload`, `install`, `up`): 24×24 SVG strokes in the text color. Add new ones there.
 - **Header:** title, version, and a settings button (sliders icon) that opens
   the Settings screen (backup, storage status, version). The phone's back
   gesture closes it. **No install status in Settings** (user found it
@@ -135,12 +135,17 @@ checking that saved data survives. (Test quirk: Python's test server answers
 - Pick a routine (Upper or Lower); exercises can be picked = done in any
   order, and any can be skipped.
 - No machine setup tips (user asked to skip them).
+- **How sets are written (user's style: reps first, then weight):** one set
+  "10 reps – 45 kg"; a session grouped by weight: "3×10 – 45 kg",
+  "10, 9 reps – 40 kg · 1×8 – 37.5 kg". Never "weight × reps" (confusing).
+  Targets stay "sets × reps" ("3 × 8–10").
 - List: date (default today, max today), Upper/Lower switch, one card per
-  exercise with target, last session ("Fri, Nov 20: 40×12 · 40×11") and
-  "✓ N sets today". Default routine: the one already logged on that date,
+  exercise with target, last session ("Fri, Nov 20: 3×10 – 45 kg"),
+  check icon + "N sets today", and "Add weight" (up-arrow icon) when the
+  progression hint applies and nothing is logged yet that day. Default routine: the one already logged on that date,
   else the one after the last routine done (Upper → Lower → Upper).
-- Exercise screen: saved sets listed (pink number, ✓, 🗑 delete with
-  confirmation), then one editor for the **next** set: "Set 2 of 3",
+- Exercise screen: saved sets listed (pink number, check icon, trash icon to
+  delete with confirmation), then one editor for the **next** set: "Set 2 of 3",
   big − / + buttons (**2.5 kg** weight, **1** rep), tap the number to type it
   (a comma "22,5" is accepted), big "Save set". Planned sets = max(last
   session's count, routine minimum); after that "+ Add set".
@@ -151,7 +156,11 @@ checking that saved data survives. (Test quirk: Python's test server answers
 - Beside each exercise, show last session's weight and reps per set.
 - New sets are prefilled with last time's numbers; adjust and tap to save.
 - Progression hint: if the top of the rep range was hit on all sets last time,
-  suggest adding weight.
+  suggest adding weight. Exact rule: last session had ≥ the routine's minimum
+  sets and every set reps ≥ range max → suggest (top weight last time +
+  2.5 kg). It's only a hint: a card "10 reps on every set last time: try
+  47.5 kg" with a "Use 47.5 kg" button (sets the weight; later sets carry it
+  forward). Hidden once a set today uses that weight or more.
 - Rest timer after each set: 2 min (`timer.js`). Pink bar above the tabs:
   countdown, "+30s", "Skip"; restarts on each saved set. Counts toward a fixed
   end time; screen kept awake while it runs (Wake Lock); at zero a short
@@ -180,19 +189,22 @@ routines over time.
 - Later, an in-app editor may let the user do this themselves (build step 4).
 Renaming or editing an exercise must keep its history.
 
+Current (after v3 "reps top out at 10, not 12": 8-12 → 8-10, 10-12 → 10;
+ranges ending at 15 unchanged):
+
 Upper:
-- Chest press 3x8-12
-- Lat pulldown 3x8-12
-- Seated row 3x8-12
-- Shoulder press 3x8-12
-- Biceps curl 2-3x10-12
-- Triceps press-down 2-3x10-12
+- Chest press 3x8-10
+- Lat pulldown 3x8-10
+- Seated row 3x8-10
+- Shoulder press 3x8-10
+- Biceps curl 2-3x10
+- Triceps press-down 2-3x10
 - Seated ab crunch 2-3x10-15
 
 Lower (glute focus):
-- Hip thrust / glute bridge machine 4x8-12
-- Leg press (feet high, slightly wide) 3-4x8-12
-- 45° back extension 3x10-12
+- Hip thrust / glute bridge machine 4x8-10
+- Leg press 3-4x8-10
+- 45° back extension 3x10
 - Leg curl 3x10-15
 - Leg extension 2-3x10-15
 - Calf raise 3x10-15
@@ -216,14 +228,15 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 2)
+## Data model (database version 3)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
 - `exercises`: `{ id, name }`. Seeded ids are readable (`chest-press`);
   the id never changes even if the name does.
 - Migration history: v1 created the stores and seeded routines (with a leg
-  press setup `note`); v2 removed `note` fields.
+  press setup `note`); v2 removed `note` fields; v3 capped rep ranges at 10
+  (`capRepsAt10`, also used by `BACKUP_MIGRATIONS[2]`).
 - `routines`: `{ id, name, subtitle?, order, items: [{ exerciseId,
   sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "2-3x10-12" →
   sets 2–3, reps 10–12. Ids: `upper`, `lower`.
@@ -245,7 +258,7 @@ subject to change; mark items done as they ship):
       set rows prefilled, save, add/delete set.
 - [x] 2a. Export/import (moved first: safety net before data piles up).
 - [x] 2b. Rest timer (2 min).
-- [ ] 2c. Progression hint.
+- [x] 2c. Progression hint.
 - [ ] 3. Body: morning weight + 7-day average, then macros entry.
       (Moved before Progress: the average needs data to build up.)
 - [ ] 4. Routine/exercise editor (add, rename keeping history).
@@ -266,4 +279,5 @@ subject to change; mark items done as they ship):
 Open the site in **Chrome** itself (not inside another app's built-in browser).
 Use the app's "Install app" button, or Chrome menu ⋮ → "Add to home screen" →
 **Install** (not "Create shortcut"). Installed correctly = appears in the app
-drawer, opens with no address bar, Settings says "Installed".
+drawer, opens with no address bar, and the Log tab's "browser version"
+banner is gone.

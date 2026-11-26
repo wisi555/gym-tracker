@@ -12,6 +12,17 @@ const DB_NAME = 'gym-tracker';
 
 // MIGRATIONS[0] takes an empty database to version 1, MIGRATIONS[1] takes
 // version 1 to version 2, and so on. `tx` is the upgrade transaction.
+// v3 change, shared with the backup upgrade: reps top out at 10, not 12.
+// 8–12 → 8–10, 10–12 → 10. Ranges ending at 15 are unchanged.
+function capRepsAt10(routine) {
+  return {
+    ...routine,
+    items: routine.items.map((it) => (it.reps.max === 12
+      ? { ...it, reps: { min: Math.min(it.reps.min, 10), max: 10 } }
+      : it)),
+  };
+}
+
 const MIGRATIONS = [
   // v1: create the stores and load the starting routines.
   (db, tx) => {
@@ -40,6 +51,16 @@ const MIGRATIONS = [
       cursor.continue();
     };
   },
+
+  // v3: reps top out at 10 instead of 12 (user's request).
+  (db, tx) => {
+    tx.objectStore('routines').openCursor().onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (!cursor) return;
+      cursor.update(capRepsAt10(cursor.value));
+      cursor.continue();
+    };
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -50,6 +71,7 @@ export const SCHEMA_VERSION = MIGRATIONS.length;
 // (even adding an exercise), keyed by the version it upgrades FROM.
 const BACKUP_MIGRATIONS = {
   1: (data) => { data.exercises = data.exercises.map(({ note, ...rest }) => rest); },
+  2: (data) => { data.routines = data.routines.map(capRepsAt10); },
 };
 
 let dbPromise = null;
