@@ -165,6 +165,57 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .w-date { flex: 1; }
 .w-val { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
+/* ---- Macros ---- */
+.macros-view { display: grid; gap: 16px; }
+.macros-view .date-row { margin: 0; }
+#tab-body .segmented { margin-bottom: 16px; }
+
+.paste-area { display: grid; gap: 10px; }
+
+.paste-box {
+  width: 100%;
+  padding: 12px;
+  border: 2px dashed var(--pink);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.preview-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.preview-list li { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+
+.macro-rows { gap: 0; padding: 4px 16px; }
+
+.macro-row {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  text-align: left;
+}
+
+.macro-row:first-child { border-top: 0; }
+.macro-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.macro-label { font-weight: 600; }
+.macro-val { font-variant-numeric: tabular-nums; }
+.macro-val strong { font-size: 1.2rem; }
+
+.macro-track {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.macro-fill { display: block; height: 100%; border-radius: 999px; background: var(--pink); }
+.macro-fill.over { background: var(--text); }
+
 /* ---- Settings ---- */
 .settings h2 { margin: 8px 0 10px; font-size: 1.25rem; }
 .settings h2 + .panel { margin-bottom: 24px; }
@@ -284,6 +335,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 .hint p { margin: 0; font-weight: 700; }
 .hint .secondary { background: var(--pink); }
+.hint .secondary.quiet { background: var(--bg); }
 
 /* ---- Log: one exercise ---- */
 .back-btn {

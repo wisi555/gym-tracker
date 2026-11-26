@@ -25,6 +25,8 @@ const ICONS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
   upload: '<path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/>',
+  paste: '<path d="M9 3.5h6v3H9z"/>'
+    + '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>',
   up: '<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>',
   install: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7"/><path d="M9 11l3 3 3-3"/>',
 };
@@ -73,7 +75,7 @@ export const fmtNum = (n) => String(round2(n)); // 40, 22.5, 62.4
 
 // Reads a typed number. Accepts "22,5" too (many Android keyboards type a
 // comma as the decimal mark). Returns null if empty, NaN if not a number.
-function parseNum(text) {
+export function parseNum(text) {
   const t = text.trim().replace(',', '.');
   if (t === '') return null;
   return /^\d*\.?\d+$|^\d+\.$/.test(t) ? Number(t) : NaN;

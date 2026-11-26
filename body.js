@@ -1,13 +1,15 @@
-// The Body tab: morning weight with the 7-day average as the main number.
-// (Macros come in a later step.)
+// The Body tab: a Weight | Macros switch.
+// Weight: morning weigh-ins with the 7-day average as the main number.
+// Macros: see macros.js.
 
 import { getWeights, saveWeight, deleteWeight } from './db.js';
 import { h, icon, todayStr, shortDate, addDays, round2, stepper } from './ui.js';
+import { initMacros, renderMacros } from './macros.js';
 
 const WEIGHT_STEP = 0.1;
 const validBodyWeight = (w) => typeof w === 'number' && Number.isFinite(w) && w > 0 && w < 500;
 
-const state = { date: todayStr(), today: todayStr() };
+const state = { view: 'weight', date: todayStr(), today: todayStr() };
 // The number being edited, kept across re-renders of the same date.
 let draft = { key: null, weight: null };
 let root;
@@ -23,6 +25,7 @@ export async function initBody(container) {
     state.today = now;
     render();
   });
+  initMacros();
   await render();
 }
 
@@ -35,6 +38,19 @@ function sevenDayAverage(weights) {
 }
 
 async function render() {
+  const switcher = h('div', { class: 'segmented', role: 'group', 'aria-label': 'Body' },
+    [['weight', 'Weight'], ['macros', 'Macros']].map(([id, name]) => h('button', {
+      type: 'button',
+      'aria-pressed': String(state.view === id),
+      onclick: () => { state.view = id; render(); },
+    }, name)));
+  const content = h('div', {});
+  if (state.view === 'macros') await renderMacros(content);
+  else await renderWeight(content);
+  root.replaceChildren(switcher, content);
+}
+
+async function renderWeight(el) {
   const weights = await getWeights(); // newest first
   const avg = sevenDayAverage(weights);
   const existing = weights.find((w) => w.date === state.date);
@@ -52,12 +68,12 @@ async function render() {
     save.disabled = true;
     await saveWeight(state.date, round2(draft.weight));
     if (navigator.vibrate) navigator.vibrate(30); // tiny buzz = saved
-    render();
+    renderWeight(el);
   });
 
   const recent = weights.filter((w) => w.date >= addDays(state.today, -13));
 
-  root.replaceChildren(h('div', { class: 'body-view' },
+  el.replaceChildren(h('div', { class: 'body-view' },
     h('div', { class: 'avg-card' },
       h('span', { class: 'avg-label' }, '7-day average'),
       h('span', { class: 'avg-value' }, avg == null ? '–' : avg.toFixed(1),
@@ -69,7 +85,7 @@ async function render() {
         h('label', { class: 'date-label', for: 'body-date' }, 'Date'),
         h('input', {
           id: 'body-date', type: 'date', class: 'date-input', value: state.date, max: state.today,
-          onchange: (e) => { if (e.target.value) { state.date = e.target.value; render(); } },
+          onchange: (e) => { if (e.target.value) { state.date = e.target.value; renderWeight(el); } },
         }),
       ),
       stepper({
@@ -89,7 +105,7 @@ async function render() {
           if (!confirm(`Delete ${w.weight.toFixed(1)} kg on ${shortDate(w.date)}?`)) return;
           await deleteWeight(w.date);
           if (draft.key === w.date) draft.key = null;
-          render();
+          renderWeight(el);
         },
       }, icon('trash')),
     ))),

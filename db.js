@@ -87,6 +87,12 @@ const MIGRATIONS = [
   (db) => {
     db.createObjectStore('weights', { keyPath: 'date' });
   },
+
+  // v6: daily macros, one per day: { date, eaten: {kcal, protein, carbs,
+  // fat, fiber}, target: {...same}, savedAt }. Missing numbers are left out.
+  (db) => {
+    db.createObjectStore('macros', { keyPath: 'date' });
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -100,6 +106,7 @@ const BACKUP_MIGRATIONS = {
   2: (data) => { data.routines = data.routines.map(capRepsAt10); },
   3: (data) => { data.routines = data.routines.map(capAllRepsAt10); },
   4: (data) => { data.weights = []; },
+  5: (data) => { data.macros = []; },
 };
 
 let dbPromise = null;
@@ -260,6 +267,30 @@ export async function deleteWeight(date) {
   await txDone(tx);
 }
 
+// ---- Daily macros ----
+
+// All macro days, newest first.
+export async function getMacros() {
+  const db = await openDB();
+  const all = await done(db.transaction('macros').objectStore('macros').getAll());
+  return all.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+// One entry per day: saving again for the same date replaces it.
+export async function saveMacros(date, eaten, target) {
+  const db = await openDB();
+  const tx = db.transaction('macros', 'readwrite');
+  tx.objectStore('macros').put({ date, eaten, target, savedAt: Date.now() });
+  await txDone(tx);
+}
+
+export async function deleteMacros(date) {
+  const db = await openDB();
+  const tx = db.transaction('macros', 'readwrite');
+  tx.objectStore('macros').delete(date);
+  await txDone(tx);
+}
+
 // ---- Small settings ("meta" store) ----
 
 export async function getMeta(key) {
@@ -282,7 +313,7 @@ export async function countSets() {
 
 // ---- Backup: export / import ----
 
-const STORES = ['exercises', 'routines', 'sets', 'meta', 'weights'];
+const STORES = ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros'];
 // Stores every backup has had since version 1.
 const FIRST_STORES = ['exercises', 'routines', 'sets', 'meta'];
 // Settings about this phone, not part of your data (kept when importing).
@@ -346,6 +377,12 @@ function checkData(data) {
   for (const w of data.weights) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(w.date)) bad('a weigh-in has a bad date');
     if (typeof w.weight !== 'number' || !(w.weight > 0)) bad('a weigh-in has a bad weight');
+  }
+  const numbersOk = (obj) => obj && typeof obj === 'object'
+    && Object.values(obj).every((n) => typeof n === 'number' && n >= 0);
+  for (const m of data.macros) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(m.date)) bad('a macros day has a bad date');
+    if (!numbersOk(m.eaten) || !numbersOk(m.target)) bad('a macros day has bad numbers');
   }
 }
 

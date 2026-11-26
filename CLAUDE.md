@@ -3,6 +3,12 @@
 Project guide for Claude. This file is the source of truth for decisions.
 Keep it up to date whenever we change a decision.
 
+## Privacy: this repo is PUBLIC
+GitHub Pages serves every file on `main` (this one included) to anyone.
+**Never write the user's personal details here or anywhere in the repo**
+(body stats, health info, real workout/food numbers, name, email). Their
+data lives only on their phone. Examples in code/docs must be made up.
+
 ## What this is
 A personal gym-tracking app for one user. No accounts, no backend,
 no cloud, no analytics. All data stays on the user's Android phone.
@@ -51,7 +57,7 @@ no cloud, no analytics. All data stays on the user's Android phone.
   `styles.css`. Light theme only (for now). Icons match: plum dumbbell on pink.
 - **No emoji or symbol characters as icons.** Use the minimal line icons in
   `ui.js` (`icon('check')`, `trash`, `back`, `plus`, `minus`, `download`,
-  `upload`, `install`, `up`): 24×24 SVG strokes in the text color. Add new ones there.
+  `upload`, `install`, `up`, `paste`): 24×24 SVG strokes in the text color. Add new ones there.
 - **Header:** title, version, and a settings button (sliders icon) that opens
   the Settings screen (backup, storage status, version). The phone's back
   gesture closes it. **No install status in Settings** (user found it
@@ -93,11 +99,14 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `db.js` – the database: opening it, the `MIGRATIONS` list, read/write
   helpers for sets, persistent-storage request.
 - `log.js` – the Log tab (date, routine switch, exercise list, set editor).
-- `body.js` – the Body tab (7-day average, weigh-in editor, last 14 days).
+- `body.js` – the Body tab: Weight | Macros switch; weight view (7-day
+  average, weigh-in editor, last 14 days).
+- `macros.js` – macros view and the paste reader `parseMacros()`.
 - `settings.js` – Settings screen: export/import, storage status, version.
 - `install.js` – "browser version" banner with Install button / steps.
 - `timer.js` – rest timer bar.
-- `ui.js` – shared helpers: `h()` element builder, `icon()`, dates
+- `ui.js` – shared helpers (anything used by another file must be
+  `export`ed): `h()` element builder, `icon()`, dates
   (`todayStr`, `shortDate`, `addDays`), numbers (`round2`, `fmtNum`,
   `parseNum`), the − / + `stepper()`, `isInstalledApp()`.
 - `defaults.js` – starting exercises/routines, used only by migration v1.
@@ -114,6 +123,9 @@ errors, installable, works offline, and a `VERSION` bump replaces the old one.
 Data changes are also tested as an upgrade from the previous released version,
 checking that saved data survives. (Test quirk: Python's test server answers
 "not modified" if two copies share a timestamp, so the test stamps each copy.)
+Syntax-check every file as a module: `node --input-type=module --check < f.js`
+(plain `node --check` misses errors in these files). A missing export only
+shows up when the app loads, so always load the app in the test.
 
 ## Checklist for every change
 1. Bump `VERSION` in `sw.js`.
@@ -187,6 +199,23 @@ checking that saved data survives. (Test quirk: Python's test server answers
 - Macros tracking: the user enters the day's food in their own Claude session,
   which estimates the day's macros. The app needs a place to input and track
   those macros.
+- Body tab has a **Weight | Macros** switch (same style as Upper/Lower).
+- Built (`macros.js`): date; big "Paste from Claude" button (reads the
+  clipboard; if blocked, a box to long-press-paste into); a "Found for …"
+  preview with Save / "Replace this day" + Cancel; five rows Calories (kcal),
+  Protein, Carbs, Fat, Fiber (g) as **eaten / target** with a thin pink bar
+  (plum when over target); tap a row to type a number by hand; "Last 7 days"
+  list (kcal + protein) with delete. One entry per day.
+- Targets come from the pasted text (no targets editor). A day without its
+  own targets shows the latest known ones.
+- **Paste formats understood** (`parseMacros`):
+  1. Agreed line (user adds this to their Claude's instructions), e.g.
+     `MACROS kcal 1930/2150 · protein 110/120 · carbs 175/265 · fat 82/65 · fiber 36/30`
+     (eaten/target; found anywhere in the text, backticks OK).
+  2. Their Claude's usual list, one per line: `Calories: ~1,930 of 2,150
+     (−220)`, `Protein: ~110 g of 120 g`, … Only lines *starting* with the
+     word count (so "low fat yogurt 200 g" in a food list is ignored).
+  "1,930" = thousands; "82,5" = decimal.
 
 ### Progress
 - In the build order but not yet defined. Define before building.
@@ -228,7 +257,7 @@ Lower (glute focus):
 Export all data to a JSON file, and import it back.
 - File: `gym-tracker-backup-YYYY-MM-DD.json` =
   `{ app: 'gym-tracker', schemaVersion, exportedAt, data: { exercises,
-  routines, sets, meta, weights } }`. Saved to Downloads.
+  routines, sets, meta, weights, macros } }`. Saved to Downloads.
 - Import checks the stores every backup has (`FIRST_STORES`), runs
   `BACKUP_MIGRATIONS`, then checks all `STORES`. New stores go in `STORES`
   and get a backup migration that adds them empty.
@@ -245,7 +274,7 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 5)
+## Data model (database version 6)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
@@ -255,7 +284,8 @@ complex dashboards, etc. Keeping it simple for now.
   press setup `note`); v2 removed `note` fields; v3 capped rep ranges at 10
   (`capRepsAt10`, also used by `BACKUP_MIGRATIONS[2]`); v4 capped every
   range at 10 (`capAllRepsAt10`, `BACKUP_MIGRATIONS[3]`); v5 added the
-  `weights` store (`BACKUP_MIGRATIONS[4]` adds an empty list).
+  `weights` store (`BACKUP_MIGRATIONS[4]` adds an empty list); v6 added
+  `macros` (`BACKUP_MIGRATIONS[5]`).
 - `routines`: `{ id, name, subtitle?, order, items: [{ exerciseId,
   sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "2-3x10-12" →
   sets 2–3, reps 10–12. Ids: `upper`, `lower`.
@@ -263,6 +293,8 @@ complex dashboards, etc. Keeping it simple for now.
   indexed by `[exerciseId, date]` (`exercise_date`) and by `date`.
 - `meta`: `{ key, value }` for settings and bookkeeping (`lastBackup`).
 - `weights`: `{ date, weight, savedAt }`, key = `date` (one per day).
+- `macros`: `{ date, eaten: {kcal, protein, carbs, fat, fiber},
+  target: {…same}, savedAt }`, key = `date`. Missing numbers are left out.
 - No separate "workout" record: a session = all sets of one exercise on one
   date. "Last session" = the most recent date *before* the selected date that
   has sets for that exercise.
@@ -281,8 +313,7 @@ subject to change; mark items done as they ship):
 - [x] 2c. Progression hint.
 - [x] 3a. Body: morning weight + 7-day average.
       (Moved before Progress: the average needs data to build up.)
-- [ ] 3b. Body: macros entry (plan first; ask what the user's Claude
-      session outputs so it can be a quick paste).
+- [x] 3b. Body: macros entry with paste from the user's Claude.
 - [ ] 4. Routine/exercise editor (add, rename keeping history).
 - [ ] 5. Progress section (define first).
 
