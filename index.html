@@ -14,12 +14,15 @@
   <header class="topbar">
     <h1 id="title">Log</h1>
     <span class="version" id="version">v…</span>
+    <button type="button" class="header-btn" id="settings-btn" aria-label="Settings and backup">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+    </button>
   </header>
 
   <main>
     <section id="tab-log" class="tab">
+      <div id="install-banner" class="install-banner" hidden></div>
       <div id="log"></div>
-      <p class="note" id="storage-status"></p>
     </section>
     <section id="tab-body" class="tab" hidden>
       <p class="placeholder">Morning weight and macros come later.</p>
@@ -27,6 +30,7 @@
     <section id="tab-progress" class="tab" hidden>
       <p class="placeholder">Progress comes later.</p>
     </section>
+    <section id="tab-settings" class="tab" hidden></section>
   </main>
 
   <nav class="tabbar" aria-label="Sections">

@@ -1,11 +1,18 @@
 // App entry point.
 import { openDB, requestPersistentStorage } from './db.js';
 import { initLog } from './log.js';
+import { renderSettings, setupInstallBanner } from './settings.js';
 
-// ---- Tabs ----
-const titles = { log: 'Log', body: 'Body', progress: 'Progress' };
+let version = '…';
+
+// ---- Tabs and the settings screen ----
+const titles = { log: 'Log', body: 'Body', progress: 'Progress', settings: 'Settings' };
+let currentTab = 'log';
+let lastMainTab = 'log'; // where "back" from settings returns to
 
 function showTab(name) {
+  currentTab = name;
+  if (name !== 'settings') lastMainTab = name;
   for (const btn of document.querySelectorAll('.tabbar button')) {
     if (btn.dataset.tab === name) btn.setAttribute('aria-current', 'page');
     else btn.removeAttribute('aria-current');
@@ -14,11 +21,27 @@ function showTab(name) {
     section.hidden = section.id !== 'tab-' + name;
   }
   document.getElementById('title').textContent = titles[name];
+  document.querySelector('main').scrollTop = 0;
 }
 
 for (const btn of document.querySelectorAll('.tabbar button')) {
   btn.addEventListener('click', () => showTab(btn.dataset.tab));
 }
+
+function openSettings() {
+  if (currentTab === 'settings') return;
+  history.pushState({ screen: 'settings' }, '');
+  showTab('settings');
+  renderSettings(document.getElementById('tab-settings'), version);
+}
+
+document.getElementById('settings-btn').addEventListener('click', openSettings);
+
+// The phone's back gesture closes the settings screen.
+window.addEventListener('popstate', () => {
+  const onSettings = history.state && history.state.screen === 'settings';
+  if (currentTab === 'settings' && !onSettings) showTab(lastMainTab);
+});
 
 // ---- Offline support and updates ----
 // The service worker (sw.js) keeps a copy of the app on the phone.
@@ -53,7 +76,8 @@ async function showVersion() {
   const reg = await navigator.serviceWorker.ready;
   const channel = new MessageChannel();
   channel.port1.onmessage = (e) => {
-    document.getElementById('version').textContent = 'v' + e.data;
+    version = e.data;
+    document.getElementById('version').textContent = 'v' + version;
   };
   reg.active.postMessage('GET_VERSION', [channel.port2]);
 }
@@ -61,20 +85,12 @@ async function showVersion() {
 setupServiceWorker();
 
 // ---- Data ----
-async function showStorageStatus() {
-  const el = document.getElementById('storage-status');
-  const ok = await requestPersistentStorage();
-  const asApp = matchMedia('(display-mode: standalone)').matches;
-  if (ok) el.textContent = 'Storage: protected ✓';
-  else if (asApp) el.textContent = 'Storage: not protected yet. Chrome decides this itself, often after the app has been used for a while; the app asks again each time it opens. Your sets are saved either way.';
-  else el.textContent = 'Storage: not protected yet. Open the app from its home-screen icon.';
-}
-
 async function startData() {
   try {
     await openDB();
     await initLog(document.getElementById('log'));
-    await showStorageStatus();
+    setupInstallBanner(openSettings);
+    requestPersistentStorage(); // ask Android to protect our data (see Settings)
   } catch (err) {
     console.error(err);
     document.getElementById('log').textContent =

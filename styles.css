@@ -30,8 +30,8 @@ body {
 
 .topbar {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
   background: var(--pink);
   color: var(--on-pink);
@@ -43,6 +43,7 @@ body {
 }
 
 .version {
+  margin-left: auto;
   color: var(--on-pink);
   opacity: 0.75;
   font-size: 0.85rem;
@@ -63,6 +64,77 @@ main {
 .muted { color: var(--muted); font-weight: 400; }
 
 button { font: inherit; color: inherit; cursor: pointer; }
+
+/* Line icons: drawn in the current text color. */
+.icon {
+  width: 1.25em;
+  height: 1.25em;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.25em;
+}
+
+.icon-lg { width: 28px; height: 28px; stroke-width: 2.5; }
+
+/* Buttons that hold an icon + text line them up neatly. */
+.primary, .secondary, .back-btn, .banner-btn, .header-btn, .step, .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.header-btn {
+  width: 48px;
+  height: 48px;
+  margin: -8px -12px -8px 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--on-pink);
+}
+
+.install-banner:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 8px 8px 14px;
+  border: 2px solid var(--pink);
+  border-radius: 16px;
+  font-size: 0.95rem;
+}
+
+.banner-btn {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---- Settings ---- */
+.settings h2 { margin: 8px 0 10px; font-size: 1.25rem; }
+.settings h2 + .panel { margin-bottom: 24px; }
+
+.panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.panel p { margin: 0; }
+.panel .note { margin: 0; }
+.big-line { font-size: 1.15rem; font-weight: 700; }
 button:disabled { opacity: 0.45; cursor: default; }
 .error { color: #a0153e; }
 
@@ -157,7 +229,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 /* ---- Log: one exercise ---- */
 .back-btn {
   min-height: 48px;
-  padding: 0;
+  padding: 0 8px 0 0;
   border: 0;
   background: none;
   font-weight: 700;
@@ -282,6 +354,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 .primary { background: var(--pink); color: var(--on-pink); }
 .secondary { background: var(--bg); }
 .all-done-text { margin: 0; font-size: 1.2rem; font-weight: 700; text-align: center; }
+.ex-done .icon { width: 1.1em; height: 1.1em; stroke-width: 2.5; }
+.set-check { display: inline-flex; }
 
 .placeholder {
   color: var(--muted);

@@ -4,24 +4,12 @@
 import {
   getRoutines, getSetsOn, getLastSession, getSetsByDate, getLatestSet, addSet, deleteSet,
 } from './db.js';
+import { h, icon, todayStr, shortDate } from './ui.js';
 
 const WEIGHT_STEP = 2.5;
 const REPS_STEP = 1;
 
 // ---- Small helpers ----
-
-// Today's date as 'YYYY-MM-DD' in the phone's own time zone.
-export function todayStr() {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-function shortDate(str) {
-  const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-}
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const fmtWeight = (w) => String(round2(w)); // 40, 22.5
@@ -39,20 +27,6 @@ function parseNum(text) {
 
 const validWeight = (w) => typeof w === 'number' && Number.isFinite(w) && w >= 0;
 const validReps = (r) => Number.isInteger(r) && r >= 1;
-
-// Tiny element builder: h('button', { class: 'x', onclick: fn }, 'Text')
-function h(tag, props = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [key, val] of Object.entries(props)) {
-    if (val == null || val === false) continue;
-    if (key.startsWith('on')) el.addEventListener(key.slice(2), val);
-    else if (key === 'class') el.className = val;
-    else if (key === 'value') el.value = val;
-    else el.setAttribute(key, val === true ? '' : val);
-  }
-  el.append(...children.flat().filter((c) => c != null && c !== false));
-  return el;
-}
 
 // ---- State ----
 
@@ -81,7 +55,7 @@ export async function initLog(container) {
 
   // The phone's back button/gesture returns from an exercise to the list.
   window.addEventListener('popstate', () => {
-    if (state.exerciseId) {
+    if (state.exerciseId && !(history.state && history.state.exercise)) {
       state.exerciseId = null;
       render();
     }
@@ -197,8 +171,8 @@ async function listView() {
         ),
         h('span', { class: 'ex-last' },
           last ? `${shortDate(last.date)}: ${last.sets.map(fmtSet).join(' · ')}` : 'No history yet'),
-        done.length > 0 && h('span', { class: 'ex-done' },
-          `✓ ${done.length} ${done.length === 1 ? 'set' : 'sets'} ${dayWord}`),
+        done.length > 0 && h('span', { class: 'ex-done' }, icon('check'),
+          ` ${done.length} ${done.length === 1 ? 'set' : 'sets'} ${dayWord}`),
       ),
     ))),
   );
@@ -236,7 +210,7 @@ async function exerciseView() {
   if (draft.key !== key) draft = { key, ...prefill(next, done, lastSets, item) };
 
   return h('div', { class: 'exercise-view' },
-    h('button', { type: 'button', class: 'back-btn', onclick: backToList }, '← Exercises'),
+    h('button', { type: 'button', class: 'back-btn', onclick: backToList }, icon('back'), 'Exercises'),
     h('h2', { class: 'ex-title' }, item.exercise.name),
     h('p', { class: 'muted ex-sub' }, `Target ${target(item)}`),
     h('p', { class: 'ex-last' },
@@ -246,7 +220,7 @@ async function exerciseView() {
     done.length > 0 && h('ol', { class: 'saved-sets' }, done.map((set, i) => h('li', {},
       h('span', { class: 'set-no' }, String(i + 1)),
       h('span', { class: 'set-val' }, `${fmtWeight(set.weight)} kg × ${set.reps}`),
-      h('span', { class: 'set-check', 'aria-label': 'saved' }, '✓'),
+      h('span', { class: 'set-check', title: 'Saved' }, icon('check')),
       h('button', {
         type: 'button', class: 'icon-btn', 'aria-label': `Delete set ${i + 1}`,
         onclick: async () => {
@@ -254,14 +228,14 @@ async function exerciseView() {
           await deleteSet(set.id);
           render();
         },
-      }, '🗑'),
+      }, icon('trash')),
     ))),
 
     showEditor
       ? editor({ item, done, next, planned, lastSets })
       : h('div', { class: 'all-done' },
-        h('p', { class: 'all-done-text' }, `All ${planned} sets done ✓`),
-        h('button', { type: 'button', class: 'secondary', onclick: () => { state.extraSet = true; render(); } }, '+ Add set'),
+        h('p', { class: 'all-done-text' }, `All ${planned} sets done `, icon('check')),
+        h('button', { type: 'button', class: 'secondary', onclick: () => { state.extraSet = true; render(); } }, icon('plus'), 'Add set'),
         h('button', { type: 'button', class: 'primary', onclick: backToList }, 'Back to exercises'),
       ),
   );
@@ -330,12 +304,12 @@ function stepper({ label, unit, step, decimal, value, onChange }) {
       h('button', {
         type: 'button', class: 'step', 'aria-label': `${label} minus ${step}`,
         onclick: () => set(Math.max(0, round2(base() - step))),
-      }, '−'),
+      }, icon('minus', 'icon icon-lg')),
       h('label', { class: 'num-wrap' }, input, h('span', { class: 'unit' }, unit)),
       h('button', {
         type: 'button', class: 'step', 'aria-label': `${label} plus ${step}`,
         onclick: () => set(round2(base() + step)),
-      }, '+'),
+      }, icon('plus', 'icon icon-lg')),
     ),
   );
 }

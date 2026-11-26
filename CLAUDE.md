@@ -49,6 +49,12 @@ no cloud, no analytics. All data stays on the user's Android phone.
   header, active tab and main buttons; barely-pink white background; deep plum
   `#3d1f2e` text for readability. Colors are variables at the top of
   `styles.css`. Light theme only (for now). Icons match: plum dumbbell on pink.
+- **No emoji or symbol characters as icons.** Use the minimal line icons in
+  `ui.js` (`icon('check')`, `trash`, `back`, `plus`, `minus`, `download`,
+  `upload`, `install`): 24×24 SVG strokes in the text color. Add new ones there.
+- **Header:** title, version, and a settings button (sliders icon) that opens
+  the Settings screen (backup, install, storage, version). The phone's back
+  gesture closes it.
 
 ### Update mechanism (how new versions reach the installed app)
 - `sw.js` holds one `VERSION` constant. The cache name includes it. The app
@@ -85,6 +91,10 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `db.js` – the database: opening it, the `MIGRATIONS` list, read/write
   helpers for sets, persistent-storage request.
 - `log.js` – the Log tab (date, routine switch, exercise list, set editor).
+- `settings.js` – Settings screen: export/import, install button/help,
+  storage status, version; also the "browser version" install banner.
+- `ui.js` – shared helpers: `h()` element builder, `icon()`, dates,
+  `isInstalledApp()`.
 - `defaults.js` – starting exercises/routines, used only by migration v1.
   Never edit after release; changes go in a new migration in `db.js`.
 - `sw.js` – service worker: `VERSION`, precache list, offline + updates.
@@ -182,6 +192,17 @@ Lower (glute focus):
 
 ## Backup
 Export all data to a JSON file, and import it back.
+- File: `gym-tracker-backup-YYYY-MM-DD.json` =
+  `{ app: 'gym-tracker', schemaVersion, exportedAt, data: { exercises,
+  routines, sets, meta } }`. Saved to Downloads.
+- Import: file is checked (clear messages if not a backup, damaged, or from a
+  newer app version), older backups are upgraded with `BACKUP_MIGRATIONS`
+  in `db.js`, the user confirms a summary, a safety copy
+  (`gym-tracker-before-import-…`) is downloaded, then everything is replaced
+  in one all-or-nothing database transaction.
+- **Rule:** every new database migration needs a matching
+  `BACKUP_MIGRATIONS` step doing the same change to plain data.
+- `meta.lastBackup` (phone-only, not exported) drives "Last backup: N days ago".
 
 ## Out of scope
 Accounts, sync, backend, social features, exercise videos or libraries,
@@ -214,7 +235,7 @@ subject to change; mark items done as they ship):
 - [x] 1b. Data layer: IndexedDB + migrations, routines seeded, persistent storage.
 - [x] 1c. Log screen: date, Upper/Lower, exercise list with last session,
       set rows prefilled, save, add/delete set.
-- [ ] 2a. Export/import (moved first: safety net before data piles up).
+- [x] 2a. Export/import (moved first: safety net before data piles up).
 - [ ] 2b. Rest timer (2 min).
 - [ ] 2c. Progression hint.
 - [ ] 3. Body: morning weight + 7-day average, then macros entry.
@@ -224,6 +245,13 @@ subject to change; mark items done as they ship):
 
 ## Open questions
 - Progress section: what it should show.
-- Persistent storage: on the user's phone Chrome said "not protected" at v3
-  (installed app). The app re-asks on every launch. Watch it; export/import
-  (2a) is the safety net either way.
+- Persistent storage: Chrome said "not protected" at v3. Turned out the app
+  was opening in the browser, not as an installed app. Re-check once it's
+  properly installed. The app re-asks on every launch; backups are the
+  safety net either way.
+
+## Installing (for the user)
+Open the site in **Chrome** itself (not inside another app's built-in browser).
+Use the app's "Install app" button, or Chrome menu ⋮ → "Add to home screen" →
+**Install** (not "Create shortcut"). Installed correctly = appears in the app
+drawer, opens with no address bar, Settings says "Installed".
