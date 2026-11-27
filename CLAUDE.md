@@ -228,7 +228,8 @@ routines over time.
 - Because defaults are only seeded into an empty database, a change requested
   later is shipped as a **data migration** (add new exercises, rename by id,
   change targets) so it reaches the installed app without touching history.
-- Later, an in-app editor may let the user do this themselves (build step 4).
+- **How routines change:** the user asks Claude, Claude ships a migration
+  (+ matching `BACKUP_MIGRATIONS` step). No in-app editor (step 4 skipped).
 Renaming or editing an exercise must keep its history.
 
 **Rule: every rep range tops out at 10** (user's request; v3 capped 12s,
@@ -314,7 +315,11 @@ subject to change; mark items done as they ship):
 - [x] 3a. Body: morning weight + 7-day average.
       (Moved before Progress: the average needs data to build up.)
 - [x] 3b. Body: macros entry with paste from the user's Claude.
-- [ ] 4. Routine/exercise editor (add, rename keeping history).
+- [~] 4. Routine/exercise editor — **skipped for now** (user's decision).
+      Risks discussed: clashes between in-app edits and Claude's migrations,
+      orphaned history on delete, rename vs replace mixing histories, more
+      clutter/bugs. If ever revisited: no real deletes (hide instead),
+      separate "rename" from "replace", tucked away in Settings.
 - [ ] 5. Progress section (define first).
 
 ## Status notes
