@@ -203,6 +203,12 @@ export async function getLastSession(exerciseId, date) {
   return { date: sets[0].date, sets: sets.sort(bySetOrder) };
 }
 
+// Every set ever logged (for the Progress tab).
+export async function getAllSets() {
+  const db = await openDB();
+  return done(db.transaction('sets').objectStore('sets').getAll());
+}
+
 // All sets on a date (any exercise), oldest saved first.
 export async function getSetsByDate(date) {
   const db = await openDB();

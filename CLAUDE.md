@@ -102,12 +102,16 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `body.js` – the Body tab: Weight | Macros switch; weight view (7-day
   average, weigh-in editor, last 14 days).
 - `macros.js` – macros view and the paste reader `parseMacros()`.
+- `progress.js` – the Progress tab (streak + stats, strength, body charts);
+  `streakStats()` is a pure function (tested on its own).
+- `chart.js` – `lineChart()`: the small SVG line chart.
 - `settings.js` – Settings screen: export/import, storage status, version.
 - `install.js` – "browser version" banner with Install button / steps.
 - `timer.js` – rest timer bar.
 - `ui.js` – shared helpers (anything used by another file must be
   `export`ed): `h()` element builder, `icon()`, dates
-  (`todayStr`, `shortDate`, `addDays`), numbers (`round2`, `fmtNum`,
+  (`todayStr`, `shortDate`, `addDays`, `weekStart`, `daysBetween`),
+  `fmtSession()` (user's set format), numbers (`round2`, `fmtNum`,
   `parseNum`), the − / + `stepper()`, `isInstalledApp()`.
 - `defaults.js` – starting exercises/routines, used only by migration v1.
   Never edit after release; changes go in a new migration in `db.js`.
@@ -217,8 +221,29 @@ shows up when the app loads, so always load the app in the test.
      word count (so "low fat yogurt 200 g" in a food list is ignored).
   "1,930" = thousands; "82,5" = decimal.
 
-### Progress
-- In the build order but not yet defined. Define before building.
+### Progress (`progress.js`, charts in `chart.js`)
+Top switch **Streak | Strength | Body** (Streak is the default). Data is
+re-read every time the tab is shown.
+- **Streak:** big pink card "Weekly streak · 2+ gym days — N weeks".
+  A gym day = a date with ≥1 set. Weeks run **Monday–Sunday**. This week
+  counts once it has 2+ days and never breaks the streak while in progress.
+  A past week with <2 days breaks it **unless excused**: tap that week's bar
+  → confirm → excused (hatched bar, "off"). Excused weeks keep the streak
+  alive but don't add to it; tap again to un-excuse. Stored in
+  `meta.excusedWeeks` (Monday dates; exported in backups).
+  Bars: last 8 weeks, gym days per week, dashed line at 2, "Now" = this
+  week. Stat tiles (grow over time): gym visits, sets logged, kg lifted in
+  total (Σ weight×reps), best streak, days since day one, weeks since day one.
+- **Strength:** exercises grouped by routine with their latest heaviest
+  weight. Tap → chart "Heaviest weight per session" (3 months | All) +
+  "Sessions" list in the user's format. Back gesture returns.
+- **Body:** one chart, cycle **Weight | Calories | Protein**, weekly averages
+  (12 weeks | All); calories/protein show the latest target as a dashed line.
+- Charts: hand-drawn SVG, one series, one axis, 2px line, 8px dots, faint
+  grid, only the latest value written on the chart; tap/drag (or arrow keys)
+  to read any point in the line above the chart. Chart marks use
+  `--chart: #d6618f` (the pastel `--pink` fails contrast as a thin line;
+  validated ≥3:1 on background and cards). Text stays plum.
 
 ## Routines (all machines)
 Store routines as data, not hard-coded, so they can change later.
@@ -292,7 +317,8 @@ complex dashboards, etc. Keeping it simple for now.
   sets 2–3, reps 10–12. Ids: `upper`, `lower`.
 - `sets`: `{ id, date, exerciseId, routineId, setNo, weight, reps, savedAt }`,
   indexed by `[exerciseId, date]` (`exercise_date`) and by `date`.
-- `meta`: `{ key, value }` for settings and bookkeeping (`lastBackup`).
+- `meta`: `{ key, value }` for settings and bookkeeping: `lastBackup`
+  (phone-only), `excusedWeeks` (array of Monday dates, exported).
 - `weights`: `{ date, weight, savedAt }`, key = `date` (one per day).
 - `macros`: `{ date, eaten: {kcal, protein, carbs, fat, fiber},
   target: {…same}, savedAt }`, key = `date`. Missing numbers are left out.
@@ -320,7 +346,7 @@ subject to change; mark items done as they ship):
       orphaned history on delete, rename vs replace mixing histories, more
       clutter/bugs. If ever revisited: no real deletes (hide instead),
       separate "rename" from "replace", tucked away in Settings.
-- [ ] 5. Progress section (define first).
+- [x] 5. Progress section (Streak | Strength | Body).
 
 ## Status notes
 - As of v6 the user has entered **no real workout data** (building in one
@@ -332,7 +358,8 @@ spacing) after features are done. Treat these as small changes: no plan/OK
 round needed unless it touches behavior or data; still bump `VERSION`.
 
 ## Open questions
-- Progress section: what it should show.
+- Progress was built with made-up test data; the user will come back with
+  feedback after real use.
 - Persistent storage: Chrome said "not protected" at v3. Turned out the app
   was opening in the browser, not as an installed app. Re-check once it's
   properly installed. The app re-asks on every launch; backups are the

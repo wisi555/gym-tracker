@@ -5,7 +5,7 @@ import {
   getRoutines, getSetsOn, getLastSession, getSetsByDate, getLatestSet, addSet, deleteSet,
 } from './db.js';
 import {
-  h, icon, todayStr, shortDate, round2, fmtNum as fmtWeight, stepper,
+  h, icon, todayStr, shortDate, round2, fmtNum as fmtWeight, stepper, fmtSession,
 } from './ui.js';
 import { startRest } from './timer.js';
 
@@ -18,22 +18,6 @@ const REPS_STEP = 1;
 // The user's way of writing sets: reps first, then weight.
 // One set: "10 reps – 45 kg".
 const fmtOne = (s) => `${s.reps} reps – ${fmtWeight(s.weight)} kg`;
-
-// A session, grouped by weight: "3×10 – 45 kg", "10, 9, 8 reps – 45 kg",
-// or several groups: "2×10 – 45 kg · 1×8 – 42.5 kg".
-function fmtSession(sets) {
-  const groups = [];
-  for (const s of sets) {
-    const g = groups[groups.length - 1];
-    if (g && g.weight === s.weight) g.reps.push(s.reps);
-    else groups.push({ weight: s.weight, reps: [s.reps] });
-  }
-  return groups.map(({ weight, reps }) => {
-    const same = reps.every((r) => r === reps[0]);
-    const repsText = same ? `${reps.length}×${reps[0]}` : `${reps.join(', ')} reps`;
-    return `${repsText} – ${fmtWeight(weight)} kg`;
-  }).join(' · ');
-}
 
 // Progression hint: last session had at least the minimum number of sets and
 // every set reached the top of the rep range → suggest +2.5 kg on the top weight.

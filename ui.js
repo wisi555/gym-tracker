@@ -63,6 +63,19 @@ export function addDays(str, n) {
   return `${date.getFullYear()}-${mm}-${dd}`;
 }
 
+// Monday of the week containing 'YYYY-MM-DD' (weeks run Monday–Sunday).
+export function weekStart(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  const dayOfWeek = (new Date(y, m - 1, d).getDay() + 6) % 7; // Monday = 0
+  return addDays(str, -dayOfWeek);
+}
+
+// Whole days from date a to date b ('YYYY-MM-DD').
+export function daysBetween(a, b) {
+  const t = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  return Math.round((t(b) - t(a)) / 86400000);
+}
+
 // True when running as the installed app (no browser address bar).
 export function isInstalledApp() {
   return matchMedia('(display-mode: standalone)').matches;
@@ -72,6 +85,22 @@ export function isInstalledApp() {
 
 export const round2 = (n) => Math.round(n * 100) / 100;
 export const fmtNum = (n) => String(round2(n)); // 40, 22.5, 62.4
+
+// A session, grouped by weight: "3×10 – 45 kg", "10, 9, 8 reps – 45 kg",
+// or several groups: "2×10 – 45 kg · 1×8 – 42.5 kg".
+export function fmtSession(sets) {
+  const groups = [];
+  for (const s of sets) {
+    const g = groups[groups.length - 1];
+    if (g && g.weight === s.weight) g.reps.push(s.reps);
+    else groups.push({ weight: s.weight, reps: [s.reps] });
+  }
+  return groups.map(({ weight, reps }) => {
+    const same = reps.every((r) => r === reps[0]);
+    const repsText = same ? `${reps.length}×${reps[0]}` : `${reps.join(', ')} reps`;
+    return `${repsText} – ${fmtNum(weight)} kg`;
+  }).join(' · ');
+}
 
 // Reads a typed number. Accepts "22,5" too (many Android keyboards type a
 // comma as the decimal mark). Returns null if empty, NaN if not a number.

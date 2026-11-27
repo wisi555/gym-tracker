@@ -2,6 +2,7 @@
 import { openDB, requestPersistentStorage } from './db.js';
 import { initLog } from './log.js';
 import { initBody } from './body.js';
+import { initProgress, showProgress } from './progress.js';
 import { renderSettings } from './settings.js';
 import { refreshInstallBanner } from './install.js';
 import { initTimer } from './timer.js';
@@ -30,6 +31,7 @@ function showTab(name) {
   }
   document.getElementById('title').textContent = titles[name];
   document.querySelector('main').scrollTop = 0;
+  if (name === 'progress') showProgress(); // always fresh numbers
 }
 
 for (const btn of document.querySelectorAll('.tabbar button')) {
@@ -100,6 +102,7 @@ async function startData() {
     await openDB();
     await initLog(document.getElementById('log'));
     await initBody(document.getElementById('body'));
+    initProgress(document.getElementById('progress'));
     refreshInstallBanner();
     requestPersistentStorage(); // ask Android to protect our data (see Settings)
   } catch (err) {
