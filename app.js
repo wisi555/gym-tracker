@@ -6,6 +6,7 @@ import { initProgress, showProgress } from './progress.js';
 import { renderSettings } from './settings.js';
 import { refreshInstallBanner } from './install.js';
 import { initTimer } from './timer.js';
+import { icon } from './ui.js';
 
 let version = '…';
 
@@ -34,7 +35,10 @@ function showTab(name) {
   if (name === 'progress') showProgress(); // always fresh numbers
 }
 
+// Tab bar: icons only (the header shows the section's name).
+const tabIcons = { log: 'plus', body: 'scale', progress: 'chart' };
 for (const btn of document.querySelectorAll('.tabbar button')) {
+  btn.append(icon(tabIcons[btn.dataset.tab], 'icon tab-icon'));
   btn.addEventListener('click', () => showTab(btn.dataset.tab));
 }
 

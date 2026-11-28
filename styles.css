@@ -620,6 +620,8 @@ button:disabled { opacity: 0.45; cursor: default; }
   font-weight: 600;
 }
 
+.tab-icon { width: 28px; height: 28px; vertical-align: middle; }
+
 .tabbar button[aria-current="page"] {
   background: var(--pink);
   color: var(--on-pink);

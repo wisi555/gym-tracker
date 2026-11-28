@@ -34,6 +34,20 @@ function capAllRepsAt10(routine) {
   };
 }
 
+// v7 changes (user's request), shared with the backup upgrade:
+// every exercise 3 sets × 8–10 reps, no "optional" marks, no routine
+// subtitle ("Glute focus"), and "Hip thrust / glute bridge" → "Hip thrust".
+function simplifyRoutine(routine) {
+  const { subtitle, ...rest } = routine;
+  return {
+    ...rest,
+    items: routine.items.map((it) => ({
+      ...it, sets: { min: 3, max: 3 }, reps: { min: 8, max: 10 }, optional: false,
+    })),
+  };
+}
+const renameHipThrust = (ex) => (ex.id === 'hip-thrust' ? { ...ex, name: 'Hip thrust' } : ex);
+
 const MIGRATIONS = [
   // v1: create the stores and load the starting routines.
   (db, tx) => {
@@ -93,6 +107,20 @@ const MIGRATIONS = [
   (db) => {
     db.createObjectStore('macros', { keyPath: 'date' });
   },
+
+  // v7: all exercises 3 × 8–10, no "optional", no subtitle, rename hip thrust.
+  (db, tx) => {
+    tx.objectStore('routines').openCursor().onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (!cursor) return;
+      cursor.update(simplifyRoutine(cursor.value));
+      cursor.continue();
+    };
+    const exercises = tx.objectStore('exercises');
+    exercises.get('hip-thrust').onsuccess = (event) => {
+      if (event.target.result) exercises.put(renameHipThrust(event.target.result));
+    };
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -107,6 +135,10 @@ const BACKUP_MIGRATIONS = {
   3: (data) => { data.routines = data.routines.map(capAllRepsAt10); },
   4: (data) => { data.weights = []; },
   5: (data) => { data.macros = []; },
+  6: (data) => {
+    data.routines = data.routines.map(simplifyRoutine);
+    data.exercises = data.exercises.map(renameHipThrust);
+  },
 };
 
 let dbPromise = null;

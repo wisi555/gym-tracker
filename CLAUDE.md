@@ -51,13 +51,15 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - **Relative paths everywhere** (`./app.js`, not `/app.js`): the site lives at
   `https://<user>.github.io/gym-tracker/`, a sub-folder, not the domain root.
 - **Single page app** with a bottom tab bar (thumb-reachable) to switch sections.
+  The tabs are **icons only**: Log = `plus`, Body = `scale`, Progress =
+  `chart` (each keeps an `aria-label`); the header shows the section name.
 - **Look: minimalist, pastel pink is the protagonist.** Pink `#f6b8cf` for the
   header, active tab and main buttons; barely-pink white background; deep plum
   `#3d1f2e` text for readability. Colors are variables at the top of
   `styles.css`. Light theme only (for now). Icons match: plum dumbbell on pink.
 - **No emoji or symbol characters as icons.** Use the minimal line icons in
   `ui.js` (`icon('check')`, `trash`, `back`, `plus`, `minus`, `download`,
-  `upload`, `install`, `up`, `paste`): 24×24 SVG strokes in the text color. Add new ones there.
+  `upload`, `install`, `up`, `paste`, `scale`, `chart`): 24×24 SVG strokes in the text color. Add new ones there.
 - **Header:** title, version, and a settings button (sliders icon) that opens
   the Settings screen (backup, storage status, version). The phone's back
   gesture closes it. **No install status in Settings** (user found it
@@ -257,27 +259,27 @@ routines over time.
   (+ matching `BACKUP_MIGRATIONS` step). No in-app editor (step 4 skipped).
 Renaming or editing an exercise must keep its history.
 
-**Rule: every rep range tops out at 10** (user's request; v3 capped 12s,
-v4 capped everything: 8-12 → 8-10, 10-12/10-15/12-15 → 10). Keep this for
-any exercise added later. Current:
+**Rule: every exercise is 3 sets × 8–10 reps** (user's request, v7; earlier
+v3/v4 capped reps at 10). Use this for any exercise added later unless the
+user says otherwise. No "optional" marks, no routine subtitles. Current:
 
 Upper:
 - Chest press 3x8-10
 - Lat pulldown 3x8-10
 - Seated row 3x8-10
 - Shoulder press 3x8-10
-- Biceps curl 2-3x10
-- Triceps press-down 2-3x10
-- Seated ab crunch 2-3x10
+- Biceps curl 3x8-10
+- Triceps press-down 3x8-10
+- Seated ab crunch 3x8-10
 
-Lower (glute focus):
-- Hip thrust / glute bridge machine 4x8-10
-- Leg press 3-4x8-10
-- 45° back extension 3x10
-- Leg curl 3x10
-- Leg extension 2-3x10
-- Calf raise 3x10
-- Hip abductor (optional) 2-3x10
+Lower:
+- Hip thrust 3x8-10 (renamed in v7 from "Hip thrust / glute bridge")
+- Leg press 3x8-10
+- 45° back extension 3x8-10
+- Leg curl 3x8-10
+- Leg extension 3x8-10
+- Calf raise 3x8-10
+- Hip abductor 3x8-10
 
 ## Backup
 Export all data to a JSON file, and import it back.
@@ -300,7 +302,7 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 6)
+## Data model (database version 7)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
@@ -311,10 +313,13 @@ complex dashboards, etc. Keeping it simple for now.
   (`capRepsAt10`, also used by `BACKUP_MIGRATIONS[2]`); v4 capped every
   range at 10 (`capAllRepsAt10`, `BACKUP_MIGRATIONS[3]`); v5 added the
   `weights` store (`BACKUP_MIGRATIONS[4]` adds an empty list); v6 added
-  `macros` (`BACKUP_MIGRATIONS[5]`).
-- `routines`: `{ id, name, subtitle?, order, items: [{ exerciseId,
-  sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "2-3x10-12" →
-  sets 2–3, reps 10–12. Ids: `upper`, `lower`.
+  `macros` (`BACKUP_MIGRATIONS[5]`); v7 set every item to 3 × 8–10,
+  `optional: false`, removed routine `subtitle`, renamed `hip-thrust` to
+  "Hip thrust" (`simplifyRoutine`/`renameHipThrust`, `BACKUP_MIGRATIONS[6]`).
+- `routines`: `{ id, name, order, items: [{ exerciseId,
+  sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "3x8-10" →
+  sets 3–3, reps 8–10. Ids: `upper`, `lower`. (`subtitle` existed until v7;
+  `optional` is kept but false.)
 - `sets`: `{ id, date, exerciseId, routineId, setNo, weight, reps, savedAt }`,
   indexed by `[exerciseId, date]` (`exercise_date`) and by `date`.
 - `meta`: `{ key, value }` for settings and bookkeeping: `lastBackup`

@@ -27,6 +27,9 @@ const ICONS = {
   upload: '<path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/>',
   paste: '<path d="M9 3.5h6v3H9z"/>'
     + '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>',
+  scale: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/>'
+    + '<path d="M7 11.5a6.5 6.5 0 0 1 10 0"/><path d="M12 12l2.2-3.2"/>',
+  chart: '<path d="M4 4v16h16"/><path d="M7.5 15l3.5-4 3 2.5 5-6"/>',
   up: '<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>',
   install: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7"/><path d="M9 11l3 3 3-3"/>',
 };
