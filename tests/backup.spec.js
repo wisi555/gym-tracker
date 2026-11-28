@@ -27,7 +27,7 @@ test('export contains every store; an older backup imports with upgrades', async
   });
   const { data: backup } = await exportBackup(page, testInfo);
   expect(backup.app).toBe('gym-tracker');
-  for (const store of ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros']) {
+  for (const store of ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros', 'checkins']) {
     expect(Array.isArray(backup.data[store])).toBe(true);
   }
   expect(backup.data.meta.find((m) => m.key === 'lastBackup')).toBeUndefined();
@@ -38,6 +38,7 @@ test('export contains every store; an older backup imports with upgrades', async
   old.schemaVersion = 1;
   delete old.data.weights;
   delete old.data.macros;
+  delete old.data.checkins;
   old.data.exercises.find((e) => e.id === 'leg-press').note = 'Feet high';
   old.data.exercises.find((e) => e.id === 'hip-thrust').name = 'Hip thrust / glute bridge';
   const lower = old.data.routines.find((r) => r.id === 'lower');
@@ -55,6 +56,7 @@ test('export contains every store; an older backup imports with upgrades', async
   expect(routines.every((r) => r.subtitle === undefined && r.items.every((i) => i.reps.max === 10))).toBe(true);
   expect(await readStore(page, 'sets')).toHaveLength(1);
   expect(await readStore(page, 'weights')).toEqual([]);
+  expect(await readStore(page, 'checkins')).toEqual([]);
   expect(errors).toEqual([]);
 });
 

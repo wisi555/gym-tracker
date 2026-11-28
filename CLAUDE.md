@@ -114,6 +114,7 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `body.js` – the Body tab: Weight | Macros switch; weight view (7-day
   average, weigh-in editor, last 14 days).
 - `macros.js` – macros view and the paste reader `parseMacros()`.
+- `checkin.js` – monthly check-in view (measurements), `checkinDue()`.
 - `progress.js` – the Progress tab (streak + stats, strength, body charts);
   `streakStats()` is a pure function (tested on its own).
 - `chart.js` – `lineChart()`: the small SVG line chart.
@@ -122,7 +123,8 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `install.js` – "browser version" banner with Install button / steps.
 - `timer.js` – rest timer bar.
 - `theme.js` – Light/Dark/Auto (`getThemePref`, `setThemePref`, `initTheme`).
-- `ui.js` – shared helpers (anything used by another file must be
+- `ui.js` – (`stepper()` takes an optional small `note` shown after the
+  label) shared helpers (anything used by another file must be
   `export`ed): `h()` element builder, `icon()`, dates
   (`todayStr`, `shortDate`, `addDays`, `weekStart`, `daysBetween`),
   `fmtSession()` (user's set format), numbers (`round2`, `fmtNum`,
@@ -239,7 +241,14 @@ in `package.json`) and run on GitHub for every push
 - Macros tracking: the user enters the day's food in their own Claude session,
   which estimates the day's macros. The app needs a place to input and track
   those macros.
-- Body tab has a **Weight | Macros** switch (same style as Upper/Lower).
+- Body tab has a **Weight | Macros | Check-in** switch (same style as
+  Upper/Lower). A small dot on "Check-in" when one is due (none yet, or the
+  last is > 30 days old); saving/deleting a check-in refreshes the dot.
+- Check-in (`checkin.js`, monthly): date; note "Last check-in: …"; steppers
+  in **cm, 0.5 steps** for **Waist, Hips, Glutes, Thighs** (each shows
+  "last 80.0 cm" as a small `note`), starting from that day's or the previous
+  check-in; "Save check-in" / "Update check-in" (one per day); "Check-ins"
+  list with delete. Photos come in step 9.
 - Built (`macros.js`): date; big "Paste from Claude" button (reads the
   clipboard; if blocked, a box to long-press-paste into); a "Found for …"
   preview with Save / "Replace this day" + Cancel; five rows Calories (kcal),
@@ -273,8 +282,10 @@ re-read every time the tab is shown.
 - **Strength:** exercises grouped by routine with their latest heaviest
   weight. Tap → chart "Heaviest weight per session" (3 months | All) +
   "Sessions" list in the user's format. Back gesture returns.
-- **Body:** one chart, cycle **Weight | Calories | Protein**, weekly averages
-  (12 weeks | All); calories/protein show the latest target as a dashed line.
+- **Body:** one chart; a sideways-scrolling row of **chips**: Weight ·
+  Calories · Protein (weekly averages) · Waist · Hips · Glutes · Thighs (one
+  point per check-in); 12 weeks | All; calories/protein show the latest
+  target as a dashed line. The chosen chip is kept scrolled into view.
 - Charts: hand-drawn SVG, one series, one axis, 2px line, 8px dots, faint
   grid, only the latest value written on the chart; tap/drag (or arrow keys)
   to read any point in the line above the chart. Chart marks use
@@ -319,7 +330,7 @@ Lower:
 Export all data to a JSON file, and import it back.
 - File: `gym-tracker-backup-YYYY-MM-DD.json` =
   `{ app: 'gym-tracker', schemaVersion, exportedAt, data: { exercises,
-  routines, sets, meta, weights, macros } }`. Saved to Downloads.
+  routines, sets, meta, weights, macros, checkins } }`. Saved to Downloads.
 - Import checks the stores every backup has (`FIRST_STORES`), runs
   `BACKUP_MIGRATIONS`, then checks all `STORES`. New stores go in `STORES`
   and get a backup migration that adds them empty.
@@ -343,7 +354,7 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 7)
+## Data model (database version 8)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
@@ -356,7 +367,8 @@ complex dashboards, etc. Keeping it simple for now.
   `weights` store (`BACKUP_MIGRATIONS[4]` adds an empty list); v6 added
   `macros` (`BACKUP_MIGRATIONS[5]`); v7 set every item to 3 × 8–10,
   `optional: false`, removed routine `subtitle`, renamed `hip-thrust` to
-  "Hip thrust" (`simplifyRoutine`/`renameHipThrust`, `BACKUP_MIGRATIONS[6]`).
+  "Hip thrust" (`simplifyRoutine`/`renameHipThrust`, `BACKUP_MIGRATIONS[6]`);
+  v8 added `checkins` (`BACKUP_MIGRATIONS[7]`).
 - `routines`: `{ id, name, order, items: [{ exerciseId,
   sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "3x8-10" →
   sets 3–3, reps 8–10. Ids: `upper`, `lower`. (`subtitle` existed until v7;
@@ -368,6 +380,8 @@ complex dashboards, etc. Keeping it simple for now.
 - `weights`: `{ date, weight, savedAt }`, key = `date` (one per day).
 - `macros`: `{ date, eaten: {kcal, protein, carbs, fat, fiber},
   target: {…same}, savedAt }`, key = `date`. Missing numbers are left out.
+- `checkins`: `{ date, waist, hips, glutes, thighs, savedAt }` in cm, key =
+  `date`; missing measurements left out. `MEASUREMENTS` in `db.js` lists them.
 - No separate "workout" record: a session = all sets of one exercise on one
   date. "Last session" = the most recent date *before* the selected date that
   has sets for that exercise.
@@ -403,7 +417,7 @@ Next round (agreed plan, in this order):
 - [x] 7b. Gentle backup reminder: small line at the top of Log, "Last backup
       N days ago" → opens Backup. Shown when there's data and last backup
       > **14 days** (or never, after a week of use). Gone after exporting.
-- [ ] 8. Monthly check-in, part 1: Body switch becomes Weight | Macros |
+- [x] 8. Monthly check-in, part 1: Body switch becomes Weight | Macros |
       Check-in. Measurements in cm (0.5 steps): **waist, hips, glutes,
       thighs** (plural). Previous check-in shown for reference; dot on
       Check-in when the last one is > 30 days old. Progress → Body chart

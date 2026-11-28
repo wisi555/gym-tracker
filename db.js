@@ -121,6 +121,12 @@ const MIGRATIONS = [
       if (event.target.result) exercises.put(renameHipThrust(event.target.result));
     };
   },
+
+  // v8: monthly check-ins, one per day: { date, waist, hips, glutes, thighs,
+  // savedAt } in cm. Missing measurements are left out.
+  (db) => {
+    db.createObjectStore('checkins', { keyPath: 'date' });
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -139,6 +145,7 @@ const BACKUP_MIGRATIONS = {
     data.routines = data.routines.map(simplifyRoutine);
     data.exercises = data.exercises.map(renameHipThrust);
   },
+  7: (data) => { data.checkins = []; },
 };
 
 let dbPromise = null;
@@ -341,6 +348,32 @@ export async function deleteMacros(date) {
   await txDone(tx);
 }
 
+// ---- Monthly check-ins (measurements in cm) ----
+
+export const MEASUREMENTS = ['waist', 'hips', 'glutes', 'thighs'];
+
+// All check-ins, newest first.
+export async function getCheckins() {
+  const db = await openDB();
+  const all = await done(db.transaction('checkins').objectStore('checkins').getAll());
+  return all.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+// One check-in per day: saving again for the same date replaces it.
+export async function saveCheckin(date, values) {
+  const db = await openDB();
+  const tx = db.transaction('checkins', 'readwrite');
+  tx.objectStore('checkins').put({ ...values, date, savedAt: Date.now() });
+  await txDone(tx);
+}
+
+export async function deleteCheckin(date) {
+  const db = await openDB();
+  const tx = db.transaction('checkins', 'readwrite');
+  tx.objectStore('checkins').delete(date);
+  await txDone(tx);
+}
+
 // ---- Small settings ("meta" store) ----
 
 export async function getMeta(key) {
@@ -359,8 +392,9 @@ export async function setMeta(key, value) {
 // When the first thing was ever saved (sets, weigh-ins, macros), or null.
 export async function firstSavedAt() {
   const db = await openDB();
-  const tx = db.transaction(['sets', 'weights', 'macros']);
-  const lists = await Promise.all(['sets', 'weights', 'macros'].map((n) => done(tx.objectStore(n).getAll())));
+  const stores = ['sets', 'weights', 'macros', 'checkins'];
+  const tx = db.transaction(stores);
+  const lists = await Promise.all(stores.map((n) => done(tx.objectStore(n).getAll())));
   const times = lists.flat().map((r) => r.savedAt).filter((t) => typeof t === 'number');
   return times.length ? Math.min(...times) : null;
 }
@@ -372,7 +406,7 @@ export async function countSets() {
 
 // ---- Backup: export / import ----
 
-const STORES = ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros'];
+const STORES = ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros', 'checkins'];
 // Stores every backup has had since version 1.
 const FIRST_STORES = ['exercises', 'routines', 'sets', 'meta'];
 // Settings about this phone, not part of your data (kept when importing).
@@ -442,6 +476,12 @@ function checkData(data) {
   for (const m of data.macros) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(m.date)) bad('a macros day has a bad date');
     if (!numbersOk(m.eaten) || !numbersOk(m.target)) bad('a macros day has bad numbers');
+  }
+  for (const c of data.checkins) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(c.date)) bad('a check-in has a bad date');
+    for (const k of MEASUREMENTS) {
+      if (c[k] != null && !(typeof c[k] === 'number' && c[k] > 0)) bad('a check-in has a bad measurement');
+    }
   }
 }
 

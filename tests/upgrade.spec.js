@@ -55,6 +55,7 @@ test('version-1 database upgrades to the current one with data kept', async ({ p
   expect(await readStore(page, 'sets')).toHaveLength(1);
   expect(await readStore(page, 'weights')).toEqual([]);
   expect(await readStore(page, 'macros')).toEqual([]);
+  expect(await readStore(page, 'checkins')).toEqual([]);
 
   await page.click('#tab-log .segmented button:has-text("Lower")');
   const card = page.locator('#tab-log .exercise', { hasText: 'Hip thrust' });

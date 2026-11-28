@@ -1,10 +1,11 @@
-// The Body tab: a Weight | Macros switch.
+// The Body tab: a Weight | Macros | Check-in switch.
 // Weight: morning weigh-ins with the 7-day average as the main number.
-// Macros: see macros.js.
+// Macros: see macros.js. Check-in (monthly measurements): see checkin.js.
 
 import { getWeights, saveWeight, deleteWeight } from './db.js';
 import { h, icon, todayStr, shortDate, addDays, round2, stepper } from './ui.js';
 import { initMacros, renderMacros } from './macros.js';
+import { renderCheckin, checkinDue } from './checkin.js';
 
 const WEIGHT_STEP = 0.1;
 const validBodyWeight = (w) => typeof w === 'number' && Number.isFinite(w) && w > 0 && w < 500;
@@ -38,14 +39,17 @@ function sevenDayAverage(weights) {
 }
 
 async function render() {
+  const due = await checkinDue();
   const switcher = h('div', { class: 'segmented', role: 'group', 'aria-label': 'Body' },
-    [['weight', 'Weight'], ['macros', 'Macros']].map(([id, name]) => h('button', {
+    [['weight', 'Weight'], ['macros', 'Macros'], ['checkin', 'Check-in']].map(([id, name]) => h('button', {
       type: 'button',
       'aria-pressed': String(state.view === id),
+      'aria-label': id === 'checkin' && due ? 'Check-in (due)' : null,
       onclick: () => { state.view = id; render(); },
-    }, name)));
+    }, name, id === 'checkin' && due && h('span', { class: 'due-dot' }))));
   const content = h('div', {});
   if (state.view === 'macros') await renderMacros(content);
+  else if (state.view === 'checkin') await renderCheckin(content, render);
   else await renderWeight(content);
   root.replaceChildren(switcher, content);
 }

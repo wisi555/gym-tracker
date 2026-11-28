@@ -117,7 +117,8 @@ export function parseNum(text) {
 const validNumber = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
 
 // [ − ]  40 kg  [ + ]   (tap the number to type it)
-export function stepper({ label, unit, step, decimal, value, onChange }) {
+// `note` (optional) is a small extra shown after the label, e.g. "last 80.0 cm".
+export function stepper({ label, note, unit, step, decimal, value, onChange }) {
   const show = (v) => (v == null || Number.isNaN(v) ? '' : fmtNum(v));
   const input = h('input', {
     type: 'text', class: 'num', value: show(value), placeholder: '–',
@@ -132,7 +133,7 @@ export function stepper({ label, unit, step, decimal, value, onChange }) {
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
 
   return h('div', { class: 'stepper' },
-    h('span', { class: 'stepper-label' }, label),
+    h('span', { class: 'stepper-label' }, label, note && h('span', { class: 'stepper-note' }, ` · ${note}`)),
     h('div', { class: 'stepper-row' },
       h('button', {
         type: 'button', class: 'step', 'aria-label': `${label} minus ${step}`,

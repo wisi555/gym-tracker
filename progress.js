@@ -3,7 +3,10 @@
 //  Strength: each exercise's heaviest weight per session over time.
 //  Body:     weekly averages of weight, calories or protein.
 
-import { getAllSets, getRoutines, getMeta, setMeta, getWeights, getMacros } from './db.js';
+import {
+  getAllSets, getRoutines, getMeta, setMeta, getWeights, getMacros, getCheckins, MEASUREMENTS,
+} from './db.js';
+import { MEASURE_LABELS } from './checkin.js';
 import {
   h, icon, todayStr, shortDate, addDays, weekStart, daysBetween, fmtNum, fmtSession,
 } from './ui.js';
@@ -66,7 +69,12 @@ async function render() {
     console.error(err);
     view = h('p', { class: 'error' }, 'Something went wrong: ' + (err && err.message ? err.message : err));
   }
-  if (seq === renderSeq) root.replaceChildren(view);
+  if (seq !== renderSeq) return;
+  root.replaceChildren(view);
+  // Keep the chosen chart chip visible in its sideways-scrolling row.
+  const chips = root.querySelector('.chips');
+  const chosen = chips && chips.querySelector('[aria-pressed="true"]');
+  if (chosen) chips.scrollLeft = Math.max(0, chosen.offsetLeft - chips.offsetLeft - 16);
 }
 
 // ---- Streak ----
@@ -257,6 +265,10 @@ const METRICS = {
   weight: { name: 'Weight', title: 'Weekly average weight', format: (v) => `${v.toFixed(1)} kg` },
   kcal: { name: 'Calories', title: 'Weekly average calories', format: (v) => `${Math.round(v).toLocaleString()} kcal` },
   protein: { name: 'Protein', title: 'Weekly average protein', format: (v) => `${Math.round(v)} g` },
+  // Monthly check-ins: one point per check-in (not averaged).
+  ...Object.fromEntries(MEASUREMENTS.map((k) => [k, {
+    name: MEASURE_LABELS[k], title: `${MEASURE_LABELS[k]} (check-ins)`, format: (v) => `${v.toFixed(1)} cm`, perCheckin: true,
+  }])),
 };
 
 // [{ date, value }] daily → [{ date: week start, value: average }] oldest first
@@ -276,7 +288,10 @@ async function bodyView() {
   const metric = METRICS[state.metric];
   let daily;
   let target = null;
-  if (state.metric === 'weight') {
+  if (metric.perCheckin) {
+    daily = (await getCheckins()).filter((c) => c[state.metric] != null)
+      .map((c) => ({ date: c.date, value: c[state.metric] })).reverse();
+  } else if (state.metric === 'weight') {
     daily = (await getWeights()).map((w) => ({ date: w.date, value: w.weight }));
   } else {
     const days = await getMacros(); // newest first
@@ -284,15 +299,19 @@ async function bodyView() {
     const withTarget = days.find((d) => d.target[state.metric] != null);
     if (withTarget) target = withTarget.target[state.metric];
   }
-  let points = weeklyAverages(daily);
+  let points = metric.perCheckin ? daily : weeklyAverages(daily);
   if (state.bodySpan === 'recent') {
     const from = addDays(weekStart(todayStr()), -7 * (RECENT_WEEKS - 1));
     points = points.filter((p) => p.date >= from);
   }
 
   return h('div', { class: 'progress-view' },
-    segmented(Object.entries(METRICS).map(([id, m]) => [id, m.name]), state.metric,
-      (id) => { state.metric = id; render(); }, 'small'),
+    // A row of chips that scrolls sideways: Weight · Calories · Protein · Waist …
+    h('div', { class: 'chips', role: 'group', 'aria-label': 'Chart' },
+      Object.entries(METRICS).map(([id, m]) => h('button', {
+        type: 'button', class: 'chip', 'aria-pressed': String(state.metric === id),
+        onclick: () => { state.metric = id; render(); },
+      }, m.name))),
     segmented([['recent', '12 weeks'], ['all', 'All']], state.bodySpan,
       (id) => { state.bodySpan = id; render(); }, 'small'),
     h('div', { class: 'panel' },
@@ -300,9 +319,10 @@ async function bodyView() {
       lineChart({
         points,
         format: metric.format,
-        describe: (p) => `week of ${shortDate(p.date)}`,
+        describe: (p) => (metric.perCheckin ? shortDate(p.date) : `week of ${shortDate(p.date)}`),
         target,
-        emptyText: state.metric === 'weight' ? 'No weigh-ins yet' : 'No macros yet',
+        emptyText: metric.perCheckin ? 'No check-ins yet'
+          : state.metric === 'weight' ? 'No weigh-ins yet' : 'No macros yet',
       })),
   );
 }
