@@ -6,7 +6,7 @@
 import {
   getAllSets, getRoutines, getMeta, setMeta, getWeights, getMacros, getCheckins, MEASUREMENTS,
 } from './db.js';
-import { MEASURE_LABELS } from './checkin.js';
+import { MEASURE_LABELS, navyBodyFat } from './checkin.js';
 import {
   h, icon, todayStr, shortDate, addDays, weekStart, daysBetween, fmtNum, fmtSession,
 } from './ui.js';
@@ -266,6 +266,7 @@ const METRICS = {
   kcal: { name: 'Calories', title: 'Weekly average calories', format: (v) => `${Math.round(v).toLocaleString()} kcal` },
   protein: { name: 'Protein', title: 'Weekly average protein', format: (v) => `${Math.round(v)} g` },
   // Monthly check-ins: one point per check-in (not averaged).
+  bodyFat: { name: 'Body fat', title: 'Body fat (US Navy estimate)', format: (v) => `${v.toFixed(1)}%`, perCheckin: true },
   ...Object.fromEntries(MEASUREMENTS.map((k) => [k, {
     name: MEASURE_LABELS[k], title: `${MEASURE_LABELS[k]} (check-ins)`, format: (v) => `${v.toFixed(1)} cm`, perCheckin: true,
   }])),
@@ -288,7 +289,12 @@ async function bodyView() {
   const metric = METRICS[state.metric];
   let daily;
   let target = null;
-  if (metric.perCheckin) {
+  if (state.metric === 'bodyFat') {
+    const height = await getMeta('height');
+    daily = (await getCheckins())
+      .map((c) => ({ date: c.date, value: navyBodyFat(c.waist, c.neck, height) }))
+      .filter((p) => p.value != null).reverse();
+  } else if (metric.perCheckin) {
     daily = (await getCheckins()).filter((c) => c[state.metric] != null)
       .map((c) => ({ date: c.date, value: c[state.metric] })).reverse();
   } else if (state.metric === 'weight') {
@@ -321,7 +327,8 @@ async function bodyView() {
         format: metric.format,
         describe: (p) => (metric.perCheckin ? shortDate(p.date) : `week of ${shortDate(p.date)}`),
         target,
-        emptyText: metric.perCheckin ? 'No check-ins yet'
+        emptyText: state.metric === 'bodyFat' ? 'Needs waist, neck and your height (Check-in)'
+          : metric.perCheckin ? 'No check-ins yet'
           : state.metric === 'weight' ? 'No weigh-ins yet' : 'No macros yet',
       })),
   );

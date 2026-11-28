@@ -4,6 +4,7 @@
 
 import {
   getCheckins, saveCheckin, deleteCheckin, MEASUREMENTS, getPhotos, savePhoto, deletePhoto, POSES,
+  getMeta, setMeta,
 } from './db.js';
 import { h, icon, todayStr, shortDate, round2, stepper, daysBetween } from './ui.js';
 
@@ -12,7 +13,17 @@ const DUE_AFTER_DAYS = 30;
 const MAX_SIDE = 1280;  // photos are shrunk to this many pixels on the long side
 const JPEG_QUALITY = 0.82;
 
-export const MEASURE_LABELS = { waist: 'Waist', hips: 'Hips', glutes: 'Glutes', thighs: 'Thighs' };
+export const MEASURE_LABELS = {
+  waist: 'Waist', neck: 'Neck', glutes: 'Glutes', thighs: 'Thighs', arm: 'Upper arm',
+};
+
+// US Navy body fat estimate (the waist–neck–height version), all in cm.
+// Returns a percentage, or null if it can't be worked out.
+export function navyBodyFat(waist, neck, height) {
+  if (!(waist > 0 && neck > 0 && height > 0) || waist - neck <= 0) return null;
+  const bf = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(height)) - 450;
+  return bf > 0 && bf < 75 ? bf : null;
+}
 const POSE_LABELS = { front: 'Front', side: 'Side', back: 'Back' };
 const valid = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0 && v < 300;
 const cm = (v) => `${v.toFixed(1)} cm`;
@@ -68,7 +79,7 @@ function render() {
 // ---- Measurements + photos ----
 
 async function renderForm() {
-  const [checkins, photos] = await Promise.all([getCheckins(), getPhotos()]); // checkins newest first
+  const [checkins, photos, height] = await Promise.all([getCheckins(), getPhotos(), getMeta('height')]); // checkins newest first
   const existing = checkins.find((c) => c.date === state.date);
   // For reference: the check-in before this date.
   const previous = checkins.find((c) => c.date < state.date);
@@ -81,7 +92,11 @@ async function renderForm() {
   }
 
   const save = h('button', { type: 'button', class: 'primary' }, existing ? 'Update check-in' : 'Save check-in');
+  // Body fat updates live as waist and neck change.
+  const bodyFatValue = h('strong', { class: 'bf-value' });
   const refresh = () => {
+    const bf = navyBodyFat(draft.values.waist, draft.values.neck, height);
+    bodyFatValue.textContent = bf == null ? '–' : `${bf.toFixed(1)}%`;
     const vals = Object.values(draft.values);
     // At least one measurement, and nothing half-typed.
     save.disabled = !vals.some(valid) || vals.some((v) => v != null && !valid(v));
@@ -108,15 +123,30 @@ async function renderForm() {
           onchange: (e) => { if (e.target.value) { state.date = e.target.value; render(); } },
         }),
       ),
-      h('p', { class: 'note' }, previous
-        ? `Last check-in: ${shortDate(previous.date)}. Measure the same spots each time.`
-        : 'Measure the same spots each time, ideally in the morning.'),
+      previous && h('p', { class: 'note' }, `Last check-in: ${shortDate(previous.date)}`),
       MEASUREMENTS.map((k) => stepper({
         label: MEASURE_LABELS[k],
         note: previous && valid(previous[k]) ? `last ${cm(previous[k])}` : null,
         unit: 'cm', step: STEP, decimal: true, value: draft.values[k],
         onChange: (v) => { draft.values[k] = v; refresh(); },
       })),
+      // Body fat (US Navy estimate) from waist, neck and height.
+      h('div', { class: 'bf-row' },
+        h('span', { class: 'bf-label' }, 'Body fat'),
+        bodyFatValue,
+        h('button', {
+          type: 'button', class: 'bf-height',
+          'aria-label': height ? `Height ${height} cm, tap to change` : 'Set height',
+          onclick: async () => {
+            const typed = prompt('Your height in cm (used only for the body fat estimate):', height ?? '');
+            if (typed == null) return;
+            const n = Number(String(typed).replace(',', '.'));
+            if (!(n >= 100 && n <= 250)) { alert('Please type your height in cm, e.g. 170.'); return; }
+            await setMeta('height', Math.round(n * 10) / 10);
+            render();
+          },
+        }, height ? `${height} cm` : 'Set height'),
+      ),
       save,
     ),
 
@@ -151,7 +181,6 @@ async function renderForm() {
 function photoPanel(dayPhotos, photoDates) {
   return h('div', { class: 'panel photo-panel' },
     h('p', { class: 'chart-title' }, 'Photos'),
-    h('p', { class: 'note' }, 'Relaxed, not flexed. Same spot, light, time of day, distance and clothes each month.'),
     h('div', { class: 'photo-slots' }, POSES.map((pose) => {
       const photo = dayPhotos.find((p) => p.pose === pose);
       return h('button', {

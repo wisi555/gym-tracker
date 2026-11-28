@@ -33,7 +33,7 @@ const photoCount = (page) => page.evaluate(() => new Promise((res) => {
 test('add, view (back gesture closes), replace-safe delete', async ({ page }) => {
   const { errors, dialogs } = await openApp(page);
   await openCheckin(page);
-  await expect(page.locator('.photo-panel')).toContainText('Relaxed, not flexed');
+  await expect(page.locator('.photo-panel')).not.toContainText('Relaxed'); // no tip: no clutter
   await addPhoto(page, 'front');
   await addPhoto(page, 'back');
   expect(await photoCount(page)).toBe(2);

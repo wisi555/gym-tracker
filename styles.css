@@ -347,6 +347,31 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .checkin-list .w-date { display: grid; gap: 2px; }
 .checkin-values { color: var(--muted); font-size: 0.9rem; }
 
+/* Body fat line in the check-in editor */
+.bf-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.bf-label { font-weight: 600; white-space: nowrap; }
+.bf-value { flex: 1; min-width: 0; }
+.bf-value { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.bf-height {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* Photos */
 .photo-panel { gap: 10px; }
 .photo-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

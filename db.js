@@ -357,7 +357,9 @@ export async function deleteMacros(date) {
 
 // ---- Monthly check-ins (measurements in cm) ----
 
-export const MEASUREMENTS = ['waist', 'hips', 'glutes', 'thighs'];
+// Shown and charted, in this order. (Older check-ins may also hold `hips`,
+// measured before v17: kept, just not shown.)
+export const MEASUREMENTS = ['waist', 'neck', 'glutes', 'thighs', 'arm'];
 
 // All check-ins, newest first.
 export async function getCheckins() {

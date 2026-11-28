@@ -114,8 +114,8 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `body.js` – the Body tab: Weight | Macros switch; weight view (7-day
   average, weigh-in editor, last 14 days).
 - `macros.js` – macros view and the paste reader `parseMacros()`.
-- `checkin.js` – monthly check-in view (measurements + photos, viewer,
-  compare), `checkinDue()`, `shrinkPhoto()`.
+- `checkin.js` – monthly check-in view (measurements, body fat, photos,
+  viewer, compare), `checkinDue()`, `shrinkPhoto()`, `navyBodyFat()`.
 - `progress.js` – the Progress tab (streak + stats, strength, body charts);
   `streakStats()` is a pure function (tested on its own).
 - `chart.js` – `lineChart()`: the small SVG line chart.
@@ -245,14 +245,20 @@ in `package.json`) and run on GitHub for every push
 - Body tab has a **Weight | Macros | Check-in** switch (same style as
   Upper/Lower). A small dot on "Check-in" when one is due (none yet, or the
   last is > 30 days old); saving/deleting a check-in refreshes the dot.
-- Check-in (`checkin.js`, monthly): date; note "Last check-in: …"; steppers
-  in **cm, 0.5 steps** for **Waist, Hips, Glutes, Thighs** (each shows
-  "last 80.0 cm" as a small `note`), starting from that day's or the previous
-  check-in; "Save check-in" / "Update check-in" (one per day); "Check-ins"
-  list with delete (deleting a check-in also deletes that day's photos).
-- Photos (same screen, `checkin.js`): panel "Photos" with the tip "Relaxed,
-  not flexed. Same spot, light, time of day, distance and clothes each
-  month." and three slots **Front · Side · Back** for the selected date.
+- Check-in (`checkin.js`, monthly): date; "Last check-in: …" (only that —
+  no advice text: the user wants **no clutter**); steppers in **cm, 0.5
+  steps** for **Waist, Neck, Glutes, Thighs, Upper arm** (v17; keys `waist,
+  neck, glutes, thighs, arm`; each shows "last 80.0 cm" as a small `note`),
+  starting from that day's or the previous check-in. Then a **Body fat** row:
+  the **US Navy estimate** (waist–neck–height version, `navyBodyFat()`),
+  updated live, plus a small button with the height ("175 cm" / "Set
+  height" → prompt; stored in `meta.height`, exported). Body fat is
+  calculated, never stored. "Save check-in" / "Update check-in" (one per
+  day); "Check-ins" list with delete (also deletes that day's photos).
+  Older check-ins may still hold `hips` (pre-v17): kept, not shown.
+- Photos (same screen, `checkin.js`): panel "Photos" with three slots
+  **Front · Side · Back** for the selected date (no tip text — removed in
+  v17 at the user's request; advice on relaxed poses was given in chat).
   Empty slot → the phone's chooser (camera or gallery); the photo is shrunk
   to ≤1280 px JPEG (`shrinkPhoto`, ~200–300 KB) and saved at once. Filled
   slot → full-screen viewer (always dark) with Replace / Delete / Close;
@@ -294,8 +300,9 @@ re-read every time the tab is shown.
   weight. Tap → chart "Heaviest weight per session" (3 months | All) +
   "Sessions" list in the user's format. Back gesture returns.
 - **Body:** one chart; a sideways-scrolling row of **chips**: Weight ·
-  Calories · Protein (weekly averages) · Waist · Hips · Glutes · Thighs (one
-  point per check-in); 12 weeks | All; calories/protein show the latest
+  Calories · Protein (weekly averages) · Body fat · Waist · Neck · Glutes ·
+  Thighs · Upper arm (one point per check-in; body fat calculated from each
+  check-in's waist + neck and the current height); 12 weeks | All; calories/protein show the latest
   target as a dashed line. The chosen chip is kept scrolled into view.
 - Charts: hand-drawn SVG, one series, one axis, 2px line, 8px dots, faint
   grid, only the latest value written on the chart; tap/drag (or arrow keys)
@@ -392,12 +399,15 @@ complex dashboards, etc. Keeping it simple for now.
 - `sets`: `{ id, date, exerciseId, routineId, setNo, weight, reps, savedAt }`,
   indexed by `[exerciseId, date]` (`exercise_date`) and by `date`.
 - `meta`: `{ key, value }` for settings and bookkeeping: `lastBackup`
-  (phone-only), `excusedWeeks` (array of Monday dates, exported).
+  (phone-only), `excusedWeeks` (array of Monday dates, exported), `height`
+  (cm, for body fat; exported).
 - `weights`: `{ date, weight, savedAt }`, key = `date` (one per day).
 - `macros`: `{ date, eaten: {kcal, protein, carbs, fat, fiber},
   target: {…same}, savedAt }`, key = `date`. Missing numbers are left out.
-- `checkins`: `{ date, waist, hips, glutes, thighs, savedAt }` in cm, key =
-  `date`; missing measurements left out. `MEASUREMENTS` in `db.js` lists them.
+- `checkins`: `{ date, waist, neck, glutes, thighs, arm, savedAt }` in cm,
+  key = `date`; missing measurements left out; older ones may hold `hips`.
+  `MEASUREMENTS` in `db.js` lists the shown ones (adding optional fields
+  needed no migration).
 - `photos`: `{ id: 'YYYY-MM-DD|pose', date, pose, blob, savedAt }`, pose =
   `front|side|back` (`POSES`), `blob` = the JPEG; index `date`.
 - No separate "workout" record: a session = all sets of one exercise on one
