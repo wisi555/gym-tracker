@@ -2,7 +2,7 @@
 // open one and log sets.
 
 import {
-  getRoutines, getSetsOn, getLastSession, getSetsByDate, getLatestSet, addSet, deleteSet,
+  getRoutines, getSetsOn, getLastSession, getSetsByDate, getLatestSet, addSet, deleteSet, updateSet,
 } from './db.js';
 import {
   h, icon, todayStr, shortDate, round2, fmtNum as fmtWeight, stepper, fmtSession,
@@ -42,7 +42,11 @@ const state = {
   routineId: null,
   exerciseId: null, // null = list view
   extraSet: false,  // "+ Add set" pressed after the planned sets are done
+  editingSetId: null, // a saved set opened for editing
 };
+
+// Numbers of the saved set being edited.
+let editDraft = { weight: null, reps: null };
 
 // Numbers being edited for the next set; kept across re-renders.
 let draft = { key: null, weight: null, reps: null };
@@ -119,6 +123,7 @@ function scrollToTop() {
 function openExercise(exerciseId) {
   state.exerciseId = exerciseId;
   state.extraSet = false;
+  state.editingSetId = null;
   history.pushState({ exercise: exerciseId }, '');
   render().then(scrollToTop);
 }
@@ -211,7 +216,8 @@ async function exerciseView() {
   const lastSets = last ? last.sets : [];
   const planned = Math.max(lastSets.length, item.sets.min);
   const next = done.length; // index of the next set
-  const showEditor = next < planned || state.extraSet;
+  const editing = done.some((s) => s.id === state.editingSetId);
+  const showEditor = !editing && (next < planned || state.extraSet);
 
   const key = `${item.exerciseId}|${state.date}|${next}`;
   if (draft.key !== key) draft = { key, ...prefill(next, done, lastSets, item) };
@@ -224,9 +230,19 @@ async function exerciseView() {
       last ? `Last (${shortDate(last.date)}): ${fmtSession(lastSets)}` : 'No history yet'),
     !isToday() && h('p', { class: 'past-note' }, `Logging for ${shortDate(state.date)}`),
 
-    done.length > 0 && h('ol', { class: 'saved-sets' }, done.map((set, i) => h('li', {},
+    done.length > 0 && h('ol', { class: 'saved-sets' }, done.map((set, i) => (set.id === state.editingSetId
+      ? h('li', { class: 'editing' }, savedSetEditor(set, i))
+      : h('li', {},
       h('span', { class: 'set-no' }, String(i + 1)),
-      h('span', { class: 'set-val' }, fmtOne(set)),
+      // Tap a saved set to fix its numbers.
+      h('button', {
+        type: 'button', class: 'set-val', 'aria-label': `Edit set ${i + 1}: ${fmtOne(set)}`,
+        onclick: () => {
+          state.editingSetId = set.id;
+          editDraft = { weight: set.weight, reps: set.reps };
+          render();
+        },
+      }, fmtOne(set)),
       h('span', { class: 'set-check', title: 'Saved' }, icon('check')),
       h('button', {
         type: 'button', class: 'icon-btn', 'aria-label': `Delete set ${i + 1}`,
@@ -236,11 +252,11 @@ async function exerciseView() {
           render();
         },
       }, icon('trash')),
-    ))),
+    )))),
 
     showEditor && hintCard(progressionHint(item, last), done),
 
-    showEditor
+    editing ? null : showEditor
       ? editor({ item, done, next, planned, lastSets })
       : h('div', { class: 'all-done' },
         h('p', { class: 'all-done-text' }, `All ${planned} sets done `, icon('check')),
@@ -248,6 +264,38 @@ async function exerciseView() {
         h('button', { type: 'button', class: 'primary', onclick: backToList }, 'Back to exercises'),
       ),
   );
+}
+
+// A saved set opened in place: same − / + editor, Save / Cancel.
+// Keeps the set's date and position; doesn't touch the rest timer.
+function savedSetEditor(set, i) {
+  const save = h('button', { type: 'button', class: 'primary' }, icon('check'), 'Save changes');
+  const refresh = () => { save.disabled = !(validWeight(editDraft.weight) && validReps(editDraft.reps)); };
+  save.addEventListener('click', async () => {
+    if (save.disabled) return;
+    save.disabled = true;
+    await updateSet(set.id, { weight: round2(editDraft.weight), reps: editDraft.reps });
+    state.editingSetId = null;
+    render();
+  });
+  const view = h('div', { class: 'editor set-edit' },
+    h('div', { class: 'editor-head' }, h('strong', {}, `Edit set ${i + 1}`)),
+    stepper({
+      label: 'Weight', unit: 'kg', step: WEIGHT_STEP, decimal: true, value: editDraft.weight,
+      onChange: (v) => { editDraft.weight = v; refresh(); },
+    }),
+    stepper({
+      label: 'Reps', unit: 'reps', step: REPS_STEP, decimal: false, value: editDraft.reps,
+      onChange: (v) => { editDraft.reps = v; refresh(); },
+    }),
+    save,
+    h('button', {
+      type: 'button', class: 'secondary quiet',
+      onclick: () => { state.editingSetId = null; render(); },
+    }, 'Cancel'),
+  );
+  refresh();
+  return view;
 }
 
 // "10 reps on every set last time: try 47.5 kg  [Use 47.5 kg]".

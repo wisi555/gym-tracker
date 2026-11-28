@@ -75,3 +75,30 @@ test('bad files are refused and nothing changes', async ({ page }, testInfo) => 
   }
   expect(await readStore(page, 'sets')).toHaveLength(1);
 });
+
+test('gentle backup reminder: shows when due, opens Backup, goes away after exporting', async ({ page }) => {
+  const { errors } = await openApp(page);
+  const reminder = page.locator('#backup-reminder');
+  await expect(reminder).toBeHidden(); // no data yet
+
+  // Made-up data saved long ago, never backed up.
+  await seed(page, { sets: makeSets([[30, 'calf-raise', 'lower', [[30, 10]]]]) });
+  await expect(reminder).toContainText('No backup yet');
+
+  // Backed up 20 days ago.
+  await seed(page, { meta: [{ key: 'lastBackup', value: Date.now() - 20 * 86400000 }] });
+  await expect(reminder).toContainText('Last backup 20 days ago');
+
+  // Backed up 5 days ago → quiet.
+  await seed(page, { meta: [{ key: 'lastBackup', value: Date.now() - 5 * 86400000 }] });
+  await expect(reminder).toBeHidden();
+
+  await seed(page, { meta: [{ key: 'lastBackup', value: Date.now() - 20 * 86400000 }] });
+  await reminder.click();
+  await expect(page.locator('#title')).toHaveText('Settings');
+  await Promise.all([page.waitForEvent('download'), page.click('text=Export backup')]);
+  await page.goBack();
+  await expect(page.locator('#title')).toHaveText('Log');
+  await expect(reminder).toBeHidden();
+  expect(errors).toEqual([]);
+});

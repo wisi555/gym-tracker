@@ -3,7 +3,7 @@ import { openDB, requestPersistentStorage } from './db.js';
 import { initLog } from './log.js';
 import { initBody } from './body.js';
 import { initProgress, showProgress } from './progress.js';
-import { renderSettings } from './settings.js';
+import { renderSettings, refreshBackupReminder } from './settings.js';
 import { refreshInstallBanner } from './install.js';
 import { initTimer } from './timer.js';
 import { icon } from './ui.js';
@@ -36,6 +36,7 @@ function showTab(name) {
   document.getElementById('title').textContent = titles[name];
   document.querySelector('main').scrollTop = 0;
   if (name === 'progress') showProgress(); // always fresh numbers
+  if (name === 'log') refreshBackupReminder();
 }
 
 // Tab bar: icons only (the header shows the section's name).
@@ -53,6 +54,7 @@ function openSettings() {
 }
 
 document.getElementById('settings-btn').addEventListener('click', openSettings);
+document.getElementById('backup-reminder').addEventListener('click', openSettings);
 
 // The phone's back gesture closes the settings screen.
 window.addEventListener('popstate', () => {
@@ -111,6 +113,7 @@ async function startData() {
     await initBody(document.getElementById('body'));
     initProgress(document.getElementById('progress'));
     refreshInstallBanner();
+    refreshBackupReminder();
     requestPersistentStorage(); // ask Android to protect our data (see Settings)
   } catch (err) {
     console.error(err);

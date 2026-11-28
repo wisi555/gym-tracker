@@ -54,3 +54,29 @@ test('a past day can be logged and becomes "last session"', async ({ page }) => 
   await expect(page.locator('#tab-log .exercise', { hasText: 'Seated row' })).toContainText('1×8 – 30 kg');
   expect(errors).toEqual([]);
 });
+
+test('a saved set can be edited in place (or the edit cancelled)', async ({ page }) => {
+  const { errors } = await openApp(page);
+  await seed(page, { sets: makeSets([[0, 'leg-curl', 'lower', [[20, 10], [20, 9]]]]) });
+  await page.click('#tab-log .segmented button:has-text("Lower")');
+  await page.locator('#tab-log .exercise', { hasText: 'Leg curl' }).click();
+  await expect(page.locator('#tab-log .editor-head')).toContainText('Set 3 of 3');
+
+  await page.click('[aria-label^="Edit set 2"]');
+  await expect(page.locator('#tab-log .set-edit')).toContainText('Edit set 2');
+  await expect(page.locator('#tab-log .editor-head', { hasText: 'Set 3 of 3' })).toHaveCount(0); // next-set editor hidden
+  const edit = page.locator('#tab-log .set-edit .stepper');
+  await expect(edit.nth(0).locator('input')).toHaveValue('20');
+  await page.click('#tab-log .set-edit [aria-label="Weight plus 2.5"]');
+  await edit.nth(1).locator('input').fill('8');
+  await page.click('#tab-log .set-edit .primary');
+  await expect(page.locator('#tab-log .saved-sets li').nth(1)).toContainText('8 reps – 22.5 kg');
+  await expect(page.locator('#tab-log .saved-sets li')).toHaveCount(2); // same number of sets
+
+  await page.click('[aria-label^="Edit set 1"]');
+  await page.click('#tab-log .set-edit [aria-label="Weight plus 2.5"]');
+  await page.click('#tab-log .set-edit button:has-text("Cancel")');
+  await expect(page.locator('#tab-log .saved-sets li').nth(0)).toContainText('10 reps – 20 kg');
+  await expect(page.locator('#rest-bar')).toBeHidden(); // editing doesn't start the timer
+  expect(errors).toEqual([]);
+});

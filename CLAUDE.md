@@ -196,7 +196,10 @@ in `package.json`) and run on GitHub for every push
   progression hint applies and nothing is logged yet that day. Default routine: the one already logged on that date,
   else the one after the last routine done (Upper → Lower → Upper).
 - Exercise screen: saved sets listed (pink number, check icon, trash icon to
-  delete with confirmation), then one editor for the **next** set: "Set 2 of 3",
+  delete with confirmation). **Tap a saved set to edit it in place** (same
+  − / + editor, "Save changes" / Cancel; keeps date + position; the next-set
+  editor hides meanwhile; doesn't start the rest timer; `updateSet()`).
+  Then one editor for the **next** set: "Set 2 of 3",
   big − / + buttons (**2.5 kg** weight, **1** rep), tap the number to type it
   (a comma "22,5" is accepted), big "Save set". Planned sets = max(last
   session's count, routine minimum); after that "+ Add set".
@@ -328,6 +331,13 @@ Export all data to a JSON file, and import it back.
 - **Rule:** every new database migration needs a matching
   `BACKUP_MIGRATIONS` step doing the same change to plain data.
 - `meta.lastBackup` (phone-only, not exported) drives "Last backup: N days ago".
+- **Gentle reminder** (`refreshBackupReminder()` in `settings.js`): a quiet
+  one-line button at the top of the Log tab ("Last backup 16 days ago ·
+  Back up" / "No backup yet") → opens Settings. Shown only when there is
+  data and the last backup is > 14 days old, or never backed up and the
+  first thing was saved ≥ 7 days ago (`firstSavedAt()`, by `savedAt`, so
+  back-filled old dates don't trigger it). Refreshed on start and whenever
+  the Log tab is shown; gone after exporting. No pop-ups.
 
 ## Out of scope
 Accounts, sync, backend, social features, exercise videos or libraries,
@@ -388,9 +398,9 @@ Next round (agreed plan, in this order):
 - [x] 6. Automatic tests in the repo (`tests/`, made-up data only) run by a
       GitHub Action on every push; Claude checks results before saying a
       version is ready.
-- [ ] 7a. Edit a saved set: tap it → opens in place with the − / + editor,
+- [x] 7a. Edit a saved set: tap it → opens in place with the − / + editor,
       Save / Cancel; keeps date + position; doesn't restart the timer.
-- [ ] 7b. Gentle backup reminder: small line at the top of Log, "Last backup
+- [x] 7b. Gentle backup reminder: small line at the top of Log, "Last backup
       N days ago" → opens Backup. Shown when there's data and last backup
       > **14 days** (or never, after a week of use). Gone after exporting.
 - [ ] 8. Monthly check-in, part 1: Body switch becomes Weight | Macros |

@@ -266,6 +266,18 @@ export async function addSet(set) {
   return req.result;
 }
 
+// Changes a saved set's weight and reps; its date and position stay.
+export async function updateSet(id, changes) {
+  const db = await openDB();
+  const tx = db.transaction('sets', 'readwrite');
+  const store = tx.objectStore('sets');
+  store.get(id).onsuccess = (event) => {
+    const set = event.target.result;
+    if (set) store.put({ ...set, ...changes });
+  };
+  await txDone(tx);
+}
+
 export async function deleteSet(id) {
   const db = await openDB();
   const tx = db.transaction('sets', 'readwrite');
@@ -342,6 +354,15 @@ export async function setMeta(key, value) {
   const tx = db.transaction('meta', 'readwrite');
   tx.objectStore('meta').put({ key, value });
   await txDone(tx);
+}
+
+// When the first thing was ever saved (sets, weigh-ins, macros), or null.
+export async function firstSavedAt() {
+  const db = await openDB();
+  const tx = db.transaction(['sets', 'weights', 'macros']);
+  const lists = await Promise.all(['sets', 'weights', 'macros'].map((n) => done(tx.objectStore(n).getAll())));
+  const times = lists.flat().map((r) => r.savedAt).filter((t) => typeof t === 'number');
+  return times.length ? Math.min(...times) : null;
 }
 
 export async function countSets() {

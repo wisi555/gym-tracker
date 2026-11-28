@@ -1,7 +1,7 @@
 // Settings screen: backup (export/import), storage status, version.
 
 import {
-  exportAll, parseBackup, replaceAll, getMeta, setMeta, countSets, getLatestSet,
+  exportAll, parseBackup, replaceAll, getMeta, setMeta, countSets, getLatestSet, firstSavedAt,
 } from './db.js';
 import { h, icon, todayStr, shortDate } from './ui.js';
 import { getThemePref, setThemePref } from './theme.js';
@@ -23,9 +23,14 @@ async function exportBackup(prefix) {
   await setMeta('lastBackup', Date.now());
 }
 
-function daysAgo(timestamp) {
+// Calendar days between a moment and today.
+function daysSince(timestamp) {
   const start = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
-  const days = Math.round((start(Date.now()) - start(timestamp)) / 86400000);
+  return Math.round((start(Date.now()) - start(timestamp)) / 86400000);
+}
+
+function daysAgo(timestamp) {
+  const days = daysSince(timestamp);
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   return `${days} days ago`;
@@ -60,6 +65,29 @@ async function importBackup(file, rerender) {
   }
   alert('Backup imported.');
   location.reload(); // start fresh with the imported data
+}
+
+// ---- Gentle backup reminder (top of the Log tab) ----
+// Shown when there is data and the last backup is over 14 days old, or there
+// has never been one and the first thing was saved over a week ago.
+const REMIND_AFTER_DAYS = 14;
+const FIRST_BACKUP_AFTER_DAYS = 7;
+
+export async function refreshBackupReminder() {
+  const el = document.getElementById('backup-reminder');
+  if (!el) return;
+  const [last, first] = await Promise.all([getMeta('lastBackup'), firstSavedAt()]);
+  let text = null;
+  if (first != null) {
+    if (last) {
+      const days = daysSince(last);
+      if (days > REMIND_AFTER_DAYS) text = `Last backup ${days} days ago`;
+    } else if (daysSince(first) >= FIRST_BACKUP_AFTER_DAYS) {
+      text = 'No backup yet';
+    }
+  }
+  el.hidden = !text;
+  if (text) el.replaceChildren(icon('download'), h('span', { class: 'reminder-text' }, text), h('span', { class: 'reminder-action' }, 'Back up'));
 }
 
 // ---- Screen ----

@@ -319,6 +319,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .c-label { fill: var(--text); font-size: 12px; font-weight: 700; }
 .c-focus { fill: none; stroke: var(--text); stroke-width: 2; }
 
+/* Gentle backup reminder: a quiet line, not a pop-up. */
+.backup-reminder:not([hidden]) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 12px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.reminder-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem; }
+.reminder-action { color: var(--text); font-weight: 700; }
+
 /* ---- Settings ---- */
 .settings h2 { margin: 8px 0 10px; font-size: 1.25rem; }
 .settings h2 + .panel { margin-bottom: 24px; }
@@ -577,6 +597,21 @@ button:disabled { opacity: 0.45; cursor: default; }
 .all-done-text { margin: 0; font-size: 1.2rem; font-weight: 700; text-align: center; }
 .ex-done .icon { width: 1.1em; height: 1.1em; stroke-width: 2.5; }
 .set-check { display: inline-flex; }
+
+/* Saved sets are tappable to edit. */
+button.set-val {
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.saved-sets li.editing { display: block; padding: 8px 0; }
+.set-edit .secondary.quiet { background: var(--bg); }
 
 .placeholder {
   color: var(--muted);
