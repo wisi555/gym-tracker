@@ -818,3 +818,53 @@ button.set-val {
   background: var(--pink);
   color: var(--on-pink);
 }
+
+/* ---- Landscape (phone on its side) ----
+   Keep content a comfortable width, centered, and leave room for a camera
+   cut-out at the sides. On short screens, slim down the bars so there's
+   space left for the content. */
+main > .tab { max-width: 640px; margin: 0 auto; }
+.topbar, main {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+.tabbar {
+  padding-left: max(8px, env(safe-area-inset-left));
+  padding-right: max(8px, env(safe-area-inset-right));
+}
+.rest-row {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .topbar { padding-top: calc(6px + env(safe-area-inset-top)); padding-bottom: 6px; }
+  .topbar h1 { font-size: 1.2rem; }
+  /* Tabs become a slim strip on the left, so the height goes to content. */
+  body {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  .topbar { grid-column: 2; grid-row: 1; }
+  main { grid-column: 2; grid-row: 2; min-height: 0; }
+  .rest-bar { grid-column: 2; grid-row: 3; }
+  .tabbar {
+    grid-column: 1;
+    grid-row: 1 / 4;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    border-top: 0;
+    border-right: 1px solid var(--line);
+  }
+  .tabbar button { flex: none; width: 56px; min-height: 56px; }
+  .topbar { padding-left: 16px; }
+  .chart-svg { max-height: 62vh; }
+  .rest-row { padding-top: 2px; padding-bottom: 2px; }
+  .rest-time { font-size: 1.3rem; }
+  .photo-viewer { grid-template-columns: 1fr auto; grid-template-rows: 1fr auto; }
+  .photo-viewer img { grid-row: 1 / span 2; }
+  .viewer-actions { grid-template-columns: 1fr; align-self: end; }
+}

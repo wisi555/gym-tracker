@@ -144,7 +144,7 @@ export async function renderSettings(container, version) {
       h('h2', {}, 'App'),
       h('div', { class: 'panel' },
         h('p', {}, persisted
-          ? 'Storage: protected — Android won\'t clear your data.'
+          ? 'Your storage is protected.'
           : 'Storage: not protected yet. Chrome decides this itself, often once the app is '
             + 'installed and used for a while. The app asks every time it opens. Keep backups either way.'),
         h('p', { class: 'muted' }, `Version ${version}`),

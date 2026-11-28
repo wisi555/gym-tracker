@@ -65,3 +65,18 @@ test('a brand-new install has the current routines (every upgrade step ran in or
   await expect(page.locator('#tab-log')).not.toContainText('glute bridge');
   expect(errors).toEqual([]);
 });
+
+test('works sideways (landscape): no sideways scrolling, content centered', async ({ page, request }) => {
+  const manifest = await (await request.get('manifest.webmanifest')).json();
+  expect(manifest.orientation).not.toBe('portrait');
+  await page.setViewportSize({ width: 780, height: 360 });
+  const { errors } = await openApp(page);
+  for (const tab of ['log', 'body', 'progress']) {
+    await page.click(`.tabbar [data-tab=${tab}]`);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+  const box = await page.locator('#tab-progress').boundingBox();
+  expect(box.width).toBeLessThanOrEqual(640);
+  expect(errors).toEqual([]);
+});

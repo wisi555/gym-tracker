@@ -50,6 +50,11 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - **`.nojekyll` at the root** so GitHub Pages serves files untouched.
 - **Relative paths everywhere** (`./app.js`, not `/app.js`): the site lives at
   `https://<user>.github.io/gym-tracker/`, a sub-folder, not the domain root.
+- **Works upright and sideways** (v19): manifest `"orientation": "any"`
+  (was locked to portrait). Content max 640 px wide, centered; side padding
+  respects camera cut-outs. On short landscape screens (≤520 px tall) the
+  header and timer slim down and the **tab bar becomes a vertical strip on
+  the left** (CSS grid on `body`); charts capped at 62% of the height.
 - **Single page app** with a bottom tab bar (thumb-reachable) to switch sections.
   The tabs are **icons only**: Log = `plus`, Body = `scale`, Progress =
   `chart` (each keeps an `aria-label`); the header shows the section name.
@@ -479,10 +484,8 @@ round needed unless it touches behavior or data; still bump `VERSION`.
 ## Open questions
 - Progress was built with made-up test data; the user will come back with
   feedback after real use.
-- Persistent storage: Chrome said "not protected" at v3. Turned out the app
-  was opening in the browser, not as an installed app. Re-check once it's
-  properly installed. The app re-asks on every launch; backups are the
-  safety net either way.
+- (Resolved) Persistent storage: the user confirmed Settings shows "Your
+  storage is protected." once properly installed.
 
 ## Installing (for the user)
 Open the site in **Chrome** itself (not inside another app's built-in browser).
