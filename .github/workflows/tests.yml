@@ -1,0 +1,23 @@
+# Runs the automatic tests on GitHub for every push.
+# The app itself needs none of this; it's a safety net so updates can't
+# silently break logging, backups or your saved data.
+name: Tests
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+        env:
+          CI: true

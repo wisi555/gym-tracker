@@ -133,17 +133,36 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `manifest.webmanifest` – makes the app installable (name, icons, colors).
 - `icons/` – app icons (made once in Claude's workspace; plain PNGs).
 - `.nojekyll` – tells GitHub Pages not to process the files.
+- Not part of the app (never precached, never loaded by the phone):
+  `tests/`, `playwright.config.js`, `package.json`, `package-lock.json`,
+  `.github/workflows/tests.yml`, `.gitignore`.
 
 ## Testing
-Before shipping, Claude tests in its workspace with headless Chromium, serving
-the files under a `/gym-tracker/` sub-folder like GitHub Pages: no console
-errors, installable, works offline, and a `VERSION` bump replaces the old one.
-Data changes are also tested as an upgrade from the previous released version,
-checking that saved data survives. (Test quirk: Python's test server answers
-"not modified" if two copies share a timestamp, so the test stamps each copy.)
-Syntax-check every file as a module: `node --input-type=module --check < f.js`
-(plain `node --check` misses errors in these files). A missing export only
-shows up when the app loads, so always load the app in the test.
+**Automatic tests** live in `tests/` (Playwright, `@playwright/test` pinned
+in `package.json`) and run on GitHub for every push
+(`.github/workflows/tests.yml`). They use **made-up data only** (public repo).
+- Run them before every merge to `main`: `npm ci` (once) then
+  `npx playwright test`. Then check the GitHub run passed before telling the
+  user a version is ready. A failure on GitHub may email the user; it's a
+  signal for Claude.
+- `tests/serve.js` serves the repo at `/gym-tracker/` like GitHub Pages
+  (no caching). `POST /__test/bump` makes `sw.js` look like a new version.
+- `tests/helpers.js`: `openApp` (collects page errors, accepts dialogs),
+  `seed` (writes made-up records into IndexedDB), `readStore`, `makeSets`,
+  `day(n)`.
+- Specs: `app` (loads, installable, offline, update, settings),
+  `upgrade` (a version-1 database gets every migration with data kept),
+  `log`, `timer` (fake clock), `body` (weights, macros reader + paste),
+  `progress` (streak rules, excuse, charts), `backup` (export, old-backup
+  import, bad files), `theme`.
+- **Every new feature or migration adds/extends tests.** A new migration
+  must keep `upgrade.spec.js` and the old-backup test in `backup.spec.js`
+  passing (update their expectations to the latest shape).
+- Selectors: scope to the tab (`#tab-log …`), since hidden tabs stay in the
+  page. Syntax-check app files as modules: `node --input-type=module --check < f.js`.
+- For screenshots of new screens, Claude may still use quick throwaway
+  scripts in its scratchpad.
+- Test-only changes (nothing the phone loads) don't need a `VERSION` bump.
 
 ## Checklist for every change
 1. Bump `VERSION` in `sw.js`.
@@ -366,7 +385,7 @@ subject to change; mark items done as they ship):
 - [x] 5. Progress section (Streak | Strength | Body).
 - [x] Dark mode (v13).
 Next round (agreed plan, in this order):
-- [ ] 6. Automatic tests in the repo (`tests/`, made-up data only) run by a
+- [x] 6. Automatic tests in the repo (`tests/`, made-up data only) run by a
       GitHub Action on every push; Claude checks results before saying a
       version is ready.
 - [ ] 7a. Edit a saved set: tap it → opens in place with the − / + editor,

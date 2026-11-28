@@ -1,0 +1,11 @@
+{
+  "name": "gym-tracker-tests",
+  "private": true,
+  "description": "Automatic tests for the Gym Tracker app. The app itself needs none of this: it runs straight from the files in this folder.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
