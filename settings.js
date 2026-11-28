@@ -44,12 +44,13 @@ async function importBackup(file, rerender) {
     alert(err.message);
     return;
   }
-  const { sets } = backup.data;
+  const { sets, photos } = backup.data;
   const lastDate = sets.reduce((max, s) => (s.date > max ? s.date : max), '');
   const made = backup.exportedAt ? new Date(backup.exportedAt).toLocaleDateString() : 'an unknown date';
   const ok = confirm(
     `Replace ALL data on this phone with this backup?\n\n`
     + `Backup from ${made}: ${sets.length} sets`
+    + (photos && photos.length ? `, ${photos.length} photos` : '')
     + (lastDate ? `, last workout ${shortDate(lastDate)}` : '') + '.\n\n'
     + 'A safety copy of your current data will be saved to Downloads first.',
   );

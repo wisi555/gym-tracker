@@ -30,6 +30,8 @@ const ICONS = {
   scale: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/>'
     + '<path d="M7 11.5a6.5 6.5 0 0 1 10 0"/><path d="M12 12l2.2-3.2"/>',
   chart: '<path d="M4 4v16h16"/><path d="M7.5 15l3.5-4 3 2.5 5-6"/>',
+  camera: '<path d="M4 8.5h3.2L9 6h6l1.8 2.5H20V19H4z"/><circle cx="12" cy="13.5" r="3.3"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
   up: '<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>',
   install: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7"/><path d="M9 11l3 3 3-3"/>',
 };

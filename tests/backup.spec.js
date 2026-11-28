@@ -27,7 +27,7 @@ test('export contains every store; an older backup imports with upgrades', async
   });
   const { data: backup } = await exportBackup(page, testInfo);
   expect(backup.app).toBe('gym-tracker');
-  for (const store of ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros', 'checkins']) {
+  for (const store of ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros', 'checkins', 'photos']) {
     expect(Array.isArray(backup.data[store])).toBe(true);
   }
   expect(backup.data.meta.find((m) => m.key === 'lastBackup')).toBeUndefined();
@@ -39,6 +39,7 @@ test('export contains every store; an older backup imports with upgrades', async
   delete old.data.weights;
   delete old.data.macros;
   delete old.data.checkins;
+  delete old.data.photos;
   old.data.exercises.find((e) => e.id === 'leg-press').note = 'Feet high';
   old.data.exercises.find((e) => e.id === 'hip-thrust').name = 'Hip thrust / glute bridge';
   const lower = old.data.routines.find((r) => r.id === 'lower');

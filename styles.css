@@ -342,9 +342,77 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ---- Check-in ---- */
 .checkin-view { display: grid; gap: 16px; }
 .checkin-view .note { margin: 0; }
+.checkin-view .back-btn { justify-self: start; }
 .checkin-list li { align-items: center; padding: 8px 0; }
 .checkin-list .w-date { display: grid; gap: 2px; }
 .checkin-values { color: var(--muted); font-size: 0.9rem; }
+
+/* Photos */
+.photo-panel { gap: 10px; }
+.photo-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+.photo-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  overflow: hidden;
+  border: 2px dashed var(--pink);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.photo-slot.filled { border-style: solid; }
+.photo-slot img, .compare-pair img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-icon { width: 30px; height: 30px; }
+
+.photo-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.photo-slot.filled .photo-label { background: var(--pink); color: var(--on-pink); }
+
+/* Full-screen viewer: always dark, so the photo stands out. */
+.photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+  background: #140d11;
+}
+
+.photo-viewer img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.viewer-caption { margin: 0; color: #f6b8cf; font-weight: 700; text-align: center; }
+.viewer-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.viewer-actions .secondary { background: #2b1f25; color: #fbe7ef; }
+.viewer-actions button { min-height: 56px; font-size: 1rem; }
+
+/* Compare */
+.compare-pickers, .compare-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.compare-select { min-width: 0; }
+.compare-row { display: grid; gap: 6px; }
+.compare-row .chart-title { margin: 0; }
+.compare-pair > * { aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; }
+
+.compare-empty {
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
 
 /* Small dot on "Check-in" when one is due. */
 .segmented button { position: relative; }

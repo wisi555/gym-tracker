@@ -127,6 +127,12 @@ const MIGRATIONS = [
   (db) => {
     db.createObjectStore('checkins', { keyPath: 'date' });
   },
+
+  // v9: progress photos: { id: 'YYYY-MM-DD|pose', date, pose, blob, savedAt }.
+  // pose = front | side | back. The image itself (a JPEG Blob) is stored here.
+  (db) => {
+    db.createObjectStore('photos', { keyPath: 'id' }).createIndex('date', 'date');
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -146,6 +152,7 @@ const BACKUP_MIGRATIONS = {
     data.exercises = data.exercises.map(renameHipThrust);
   },
   7: (data) => { data.checkins = []; },
+  8: (data) => { data.photos = []; },
 };
 
 let dbPromise = null;
@@ -367,11 +374,57 @@ export async function saveCheckin(date, values) {
   await txDone(tx);
 }
 
+// Deletes a check-in and that day's photos.
 export async function deleteCheckin(date) {
   const db = await openDB();
-  const tx = db.transaction('checkins', 'readwrite');
+  const tx = db.transaction(['checkins', 'photos'], 'readwrite');
   tx.objectStore('checkins').delete(date);
+  for (const pose of POSES) tx.objectStore('photos').delete(`${date}|${pose}`);
   await txDone(tx);
+}
+
+// ---- Progress photos ----
+
+export const POSES = ['front', 'side', 'back'];
+
+// All photos (with their image Blobs), oldest date first.
+export async function getPhotos() {
+  const db = await openDB();
+  const all = await done(db.transaction('photos').objectStore('photos').getAll());
+  return all.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : POSES.indexOf(a.pose) - POSES.indexOf(b.pose)));
+}
+
+// One photo per date and pose: saving again replaces it.
+export async function savePhoto(date, pose, blob) {
+  const db = await openDB();
+  const tx = db.transaction('photos', 'readwrite');
+  tx.objectStore('photos').put({ id: `${date}|${pose}`, date, pose, blob, savedAt: Date.now() });
+  await txDone(tx);
+}
+
+export async function deletePhoto(date, pose) {
+  const db = await openDB();
+  const tx = db.transaction('photos', 'readwrite');
+  tx.objectStore('photos').delete(`${date}|${pose}`);
+  await txDone(tx);
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [head, body] = dataUrl.split(',');
+  const type = (head.match(/^data:([^;]+)/) || [])[1] || 'image/jpeg';
+  const bytes = atob(body);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type });
 }
 
 // ---- Small settings ("meta" store) ----
@@ -392,7 +445,7 @@ export async function setMeta(key, value) {
 // When the first thing was ever saved (sets, weigh-ins, macros), or null.
 export async function firstSavedAt() {
   const db = await openDB();
-  const stores = ['sets', 'weights', 'macros', 'checkins'];
+  const stores = ['sets', 'weights', 'macros', 'checkins', 'photos'];
   const tx = db.transaction(stores);
   const lists = await Promise.all(stores.map((n) => done(tx.objectStore(n).getAll())));
   const times = lists.flat().map((r) => r.savedAt).filter((t) => typeof t === 'number');
@@ -406,7 +459,7 @@ export async function countSets() {
 
 // ---- Backup: export / import ----
 
-const STORES = ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros', 'checkins'];
+const STORES = ['exercises', 'routines', 'sets', 'meta', 'weights', 'macros', 'checkins', 'photos'];
 // Stores every backup has had since version 1.
 const FIRST_STORES = ['exercises', 'routines', 'sets', 'meta'];
 // Settings about this phone, not part of your data (kept when importing).
@@ -421,6 +474,8 @@ export async function exportAll() {
     data[name] = await done(tx.objectStore(name).getAll());
   }));
   data.meta = data.meta.filter((row) => !DEVICE_ONLY.includes(row.key));
+  // Backups are text, so each photo travels as text ("data URL") too.
+  data.photos = await Promise.all(data.photos.map(async ({ blob, ...rest }) => ({ ...rest, dataUrl: await blobToDataUrl(blob) })));
   return { app: 'gym-tracker', schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), data };
 }
 
@@ -477,6 +532,10 @@ function checkData(data) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(m.date)) bad('a macros day has a bad date');
     if (!numbersOk(m.eaten) || !numbersOk(m.target)) bad('a macros day has bad numbers');
   }
+  for (const p of data.photos) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date) || !POSES.includes(p.pose)) bad('a photo has a bad date or pose');
+    if (typeof p.dataUrl !== 'string' || !p.dataUrl.startsWith('data:image/')) bad('a photo is missing its image');
+  }
   for (const c of data.checkins) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(c.date)) bad('a check-in has a bad date');
     for (const k of MEASUREMENTS) {
@@ -488,6 +547,8 @@ function checkData(data) {
 // Replaces ALL data with `data` in one step: if anything fails, nothing
 // changes. Phone-only settings are kept.
 export async function replaceAll(data) {
+  // Turn photos back into images first (the database step can't wait).
+  data = { ...data, photos: data.photos.map(({ dataUrl, ...rest }) => ({ ...rest, blob: dataUrlToBlob(dataUrl) })) };
   const db = await openDB();
   const tx = db.transaction(STORES, 'readwrite');
   const finished = txDone(tx);

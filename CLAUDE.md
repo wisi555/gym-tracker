@@ -114,7 +114,8 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `body.js` – the Body tab: Weight | Macros switch; weight view (7-day
   average, weigh-in editor, last 14 days).
 - `macros.js` – macros view and the paste reader `parseMacros()`.
-- `checkin.js` – monthly check-in view (measurements), `checkinDue()`.
+- `checkin.js` – monthly check-in view (measurements + photos, viewer,
+  compare), `checkinDue()`, `shrinkPhoto()`.
 - `progress.js` – the Progress tab (streak + stats, strength, body charts);
   `streakStats()` is a pure function (tested on its own).
 - `chart.js` – `lineChart()`: the small SVG line chart.
@@ -248,7 +249,17 @@ in `package.json`) and run on GitHub for every push
   in **cm, 0.5 steps** for **Waist, Hips, Glutes, Thighs** (each shows
   "last 80.0 cm" as a small `note`), starting from that day's or the previous
   check-in; "Save check-in" / "Update check-in" (one per day); "Check-ins"
-  list with delete. Photos come in step 9.
+  list with delete (deleting a check-in also deletes that day's photos).
+- Photos (same screen, `checkin.js`): panel "Photos" with the tip "Relaxed,
+  not flexed. Same spot, light, time of day, distance and clothes each
+  month." and three slots **Front · Side · Back** for the selected date.
+  Empty slot → the phone's chooser (camera or gallery); the photo is shrunk
+  to ≤1280 px JPEG (`shrinkPhoto`, ~200–300 KB) and saved at once. Filled
+  slot → full-screen viewer (always dark) with Replace / Delete / Close;
+  back gesture closes it. "Compare photos" (when ≥2 dates have photos):
+  two date pickers (first vs latest by default), each pose side by side,
+  "No photo" where missing; back gesture returns. Photos live **only** in
+  IndexedDB on the phone (never uploaded, not in the gallery).
 - Built (`macros.js`): date; big "Paste from Claude" button (reads the
   clipboard; if blocked, a box to long-press-paste into); a "Found for …"
   preview with Save / "Replace this day" + Cancel; five rows Calories (kcal),
@@ -330,7 +341,11 @@ Lower:
 Export all data to a JSON file, and import it back.
 - File: `gym-tracker-backup-YYYY-MM-DD.json` =
   `{ app: 'gym-tracker', schemaVersion, exportedAt, data: { exercises,
-  routines, sets, meta, weights, macros, checkins } }`. Saved to Downloads.
+  routines, sets, meta, weights, macros, checkins, photos } }`. Saved to
+  Downloads. **Photos are included**: in the file each photo has a
+  `dataUrl` (the image as text) instead of `blob`; `exportAll` converts,
+  `replaceAll` converts back. Files with photos are bigger (~10–15 MB a
+  year) and contain private images — the user keeps them private.
 - Import checks the stores every backup has (`FIRST_STORES`), runs
   `BACKUP_MIGRATIONS`, then checks all `STORES`. New stores go in `STORES`
   and get a backup migration that adds them empty.
@@ -354,7 +369,7 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 8)
+## Data model (database version 9)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
@@ -368,7 +383,8 @@ complex dashboards, etc. Keeping it simple for now.
   `macros` (`BACKUP_MIGRATIONS[5]`); v7 set every item to 3 × 8–10,
   `optional: false`, removed routine `subtitle`, renamed `hip-thrust` to
   "Hip thrust" (`simplifyRoutine`/`renameHipThrust`, `BACKUP_MIGRATIONS[6]`);
-  v8 added `checkins` (`BACKUP_MIGRATIONS[7]`).
+  v8 added `checkins` (`BACKUP_MIGRATIONS[7]`); v9 added `photos`
+  (`BACKUP_MIGRATIONS[8]`).
 - `routines`: `{ id, name, order, items: [{ exerciseId,
   sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "3x8-10" →
   sets 3–3, reps 8–10. Ids: `upper`, `lower`. (`subtitle` existed until v7;
@@ -382,6 +398,8 @@ complex dashboards, etc. Keeping it simple for now.
   target: {…same}, savedAt }`, key = `date`. Missing numbers are left out.
 - `checkins`: `{ date, waist, hips, glutes, thighs, savedAt }` in cm, key =
   `date`; missing measurements left out. `MEASUREMENTS` in `db.js` lists them.
+- `photos`: `{ id: 'YYYY-MM-DD|pose', date, pose, blob, savedAt }`, pose =
+  `front|side|back` (`POSES`), `blob` = the JPEG; index `date`.
 - No separate "workout" record: a session = all sets of one exercise on one
   date. "Last session" = the most recent date *before* the selected date that
   has sets for that exercise.
@@ -423,7 +441,7 @@ Next round (agreed plan, in this order):
       Check-in when the last one is > 30 days old. Progress → Body chart
       options become scrollable chips incl. the measurements (one point per
       check-in). New store + migration + backup step.
-- [ ] 9. Monthly check-in, part 2: progress photos **front, side, back**,
+- [x] 9. Monthly check-in, part 2: progress photos **front, side, back**,
       taken **relaxed, not flexed** (one-line tip: same spot, light, time,
       distance, clothing). Camera or gallery; shrunk to ~1280 px JPEG; stored
       only in IndexedDB on the phone. Compare view: two check-ins side by
