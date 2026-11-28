@@ -105,3 +105,21 @@ test('gentle backup reminder: shows when due, opens Backup, goes away after expo
   await expect(reminder).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+test('an older backup with hips and "optional" imports without them', async ({ page }, testInfo) => {
+  await openApp(page);
+  const { data: backup } = await exportBackup(page, testInfo);
+  await page.goBack();
+  const old = structuredClone(backup);
+  old.schemaVersion = 9;
+  old.data.checkins = [{ date: day(-5), waist: 80, hips: 99, savedAt: 1 }];
+  old.data.routines.forEach((r) => r.items.forEach((it) => { it.optional = false; }));
+  const file = testInfo.outputPath('v9.json');
+  fs.writeFileSync(file, JSON.stringify(old));
+  await importFile(page, file);
+  await page.waitForSelector('#tab-log .exercise');
+  const [checkin] = await readStore(page, 'checkins');
+  expect(checkin.waist).toBe(80);
+  expect('hips' in checkin).toBe(false);
+  expect((await readStore(page, 'routines')).every((r) => r.items.every((it) => !('optional' in it)))).toBe(true);
+});

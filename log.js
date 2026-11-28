@@ -166,7 +166,6 @@ async function listView() {
         onclick: () => { state.routineId = r.id; render(); },
       }, r.name)),
     ),
-    routine.subtitle && h('p', { class: 'note' }, routine.subtitle),
 
     h('ul', { class: 'exercise-list' }, rows.map(({ item, done, last }) => h('li', {},
       h('button', {
@@ -175,8 +174,7 @@ async function listView() {
         onclick: () => openExercise(item.exerciseId),
       },
         h('span', { class: 'ex-top' },
-          h('span', { class: 'ex-name' }, item.exercise.name,
-            item.optional && h('span', { class: 'muted' }, ' · optional')),
+          h('span', { class: 'ex-name' }, item.exercise.name),
           h('span', { class: 'muted' }, target(item)),
         ),
         h('span', { class: 'ex-last' },

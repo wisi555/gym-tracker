@@ -49,7 +49,7 @@ test('version-1 database upgrades to the current one with data kept', async ({ p
     for (const it of routine.items) {
       expect(it.sets).toEqual({ min: 3, max: 3 });
       expect(it.reps).toEqual({ min: 8, max: 10 });
-      expect(it.optional).toBe(false);
+      expect('optional' in it).toBe(false); // deleted in v10
     }
   }
   expect(await readStore(page, 'sets')).toHaveLength(1);
@@ -63,5 +63,43 @@ test('version-1 database upgrades to the current one with data kept', async ({ p
   await expect(card).toContainText('1×10 – 40 kg');
   await expect(page.locator('#tab-log')).not.toContainText('Glute focus');
   await expect(page.locator('#tab-log')).not.toContainText('optional');
+  expect(errors).toEqual([]);
+});
+
+test('version-9 data: old hips measurements and "optional" marks are deleted', async ({ page }) => {
+  await page.goto('./manifest.webmanifest');
+  await page.evaluate(async (date) => {
+    await new Promise((resolve, reject) => {
+      const q = indexedDB.open('gym-tracker', 9);
+      q.onupgradeneeded = () => {
+        const db = q.result;
+        db.createObjectStore('exercises', { keyPath: 'id' });
+        db.createObjectStore('routines', { keyPath: 'id' });
+        const sets = db.createObjectStore('sets', { keyPath: 'id', autoIncrement: true });
+        sets.createIndex('exercise_date', ['exerciseId', 'date']);
+        sets.createIndex('date', 'date');
+        db.createObjectStore('meta', { keyPath: 'key' });
+        db.createObjectStore('weights', { keyPath: 'date' });
+        db.createObjectStore('macros', { keyPath: 'date' });
+        db.createObjectStore('checkins', { keyPath: 'date' });
+        db.createObjectStore('photos', { keyPath: 'id' }).createIndex('date', 'date');
+        const tx = q.transaction;
+        tx.objectStore('exercises').add({ id: 'chest-press', name: 'Chest press' });
+        tx.objectStore('routines').add({
+          id: 'upper', name: 'Upper', order: 1,
+          items: [{ exerciseId: 'chest-press', sets: { min: 3, max: 3 }, reps: { min: 8, max: 10 }, optional: false }],
+        });
+        tx.objectStore('checkins').add({ date, waist: 80, hips: 99, glutes: 100, savedAt: 1 });
+      };
+      q.onsuccess = () => { q.result.close(); resolve(); };
+      q.onerror = () => reject(q.error);
+    });
+  }, day(-10));
+  const { errors } = await openApp(page);
+  const [checkin] = await readStore(page, 'checkins');
+  expect(checkin).toMatchObject({ waist: 80, glutes: 100 });
+  expect('hips' in checkin).toBe(false);
+  const [routine] = await readStore(page, 'routines');
+  expect('optional' in routine.items[0]).toBe(false);
   expect(errors).toEqual([]);
 });

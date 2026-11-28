@@ -20,8 +20,8 @@ test('check-in: due dot, five measurements, body fat, previous values, chart', a
   const tab = page.locator('#tab-body .segmented button:has-text("Check-in")');
   await expect(tab.locator('.due-dot')).toHaveCount(1); // none yet → due
 
-  // Made-up previous check-in 35 days ago (one older record still has "hips").
-  await seed(page, { checkins: [{ date: day(-35), waist: 80, neck: 37, glutes: 100, thighs: 58, arm: 30, hips: 99, savedAt: 1 }] });
+  // Made-up previous check-in 35 days ago.
+  await seed(page, { checkins: [{ date: day(-35), waist: 80, neck: 37, glutes: 100, thighs: 58, arm: 30, savedAt: 1 }] });
   await page.click('.tabbar [data-tab=body]');
   await expect(tab.locator('.due-dot')).toHaveCount(1); // over 30 days → due
   await tab.click();
@@ -49,7 +49,6 @@ test('check-in: due dot, five measurements, body fat, previous values, chart', a
   await expect(tab.locator('.due-dot')).toHaveCount(0);
   const saved = (await readStore(page, 'checkins')).find((c) => c.date === day(0));
   expect(saved).toMatchObject({ waist: 80.5, neck: 37, glutes: 101.5, thighs: 58, arm: 30 });
-  expect((await readStore(page, 'checkins')).find((c) => c.date === day(-35)).hips).toBe(99); // old data kept
 
   await page.click('.tabbar [data-tab=progress]');
   await page.click('#tab-progress .segmented button:has-text("Body")');

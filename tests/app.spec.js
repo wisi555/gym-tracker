@@ -51,3 +51,17 @@ test('settings opens from the header and closes with the back gesture', async ({
   await page.goBack();
   await expect(page.locator('#title')).toHaveText('Log');
 });
+
+test('a brand-new install has the current routines (every upgrade step ran in order)', async ({ page }) => {
+  const { errors } = await openApp(page);
+  for (const name of ['Upper', 'Lower']) {
+    await page.click(`#tab-log .segmented button:has-text("${name}")`);
+    const cards = page.locator('#tab-log .exercise');
+    await expect(cards).toHaveCount(7);
+    for (const t of await cards.locator('.ex-top').allInnerTexts()) expect(t).toMatch(/3 × 8–10$/);
+  }
+  await expect(page.locator('#tab-log')).not.toContainText('Glute focus');
+  await expect(page.locator('#tab-log')).toContainText('Hip thrust');
+  await expect(page.locator('#tab-log')).not.toContainText('glute bridge');
+  expect(errors).toEqual([]);
+});

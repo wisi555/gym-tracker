@@ -48,6 +48,31 @@ function simplifyRoutine(routine) {
 }
 const renameHipThrust = (ex) => (ex.id === 'hip-thrust' ? { ...ex, name: 'Hip thrust' } : ex);
 
+// v10 changes (user's request: delete what will never be used), shared with
+// the backup upgrade: drop old `hips` measurements and the always-false
+// `optional` mark on routine items.
+const dropHips = ({ hips, ...rest }) => rest;
+const dropOptional = (routine) => ({
+  ...routine,
+  items: routine.items.map(({ optional, ...rest }) => rest),
+});
+
+// Changes every record of a store; resolves when the last one is done, so
+// the next upgrade step only starts afterwards (steps must not overlap, or a
+// later step could read records an earlier one hasn't updated yet).
+function updateEach(tx, storeName, change) {
+  return new Promise((resolve, reject) => {
+    const req = tx.objectStore(storeName).openCursor();
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (!cursor) { resolve(); return; }
+      cursor.update(change(cursor.value));
+      cursor.continue();
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
 const MIGRATIONS = [
   // v1: create the stores and load the starting routines.
   (db, tx) => {
@@ -65,37 +90,13 @@ const MIGRATIONS = [
   },
 
   // v2: remove machine setup tips (the user doesn't want them shown).
-  (db, tx) => {
-    tx.objectStore('exercises').openCursor().onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (!cursor) return;
-      if ('note' in cursor.value) {
-        const { note, ...rest } = cursor.value;
-        cursor.update(rest);
-      }
-      cursor.continue();
-    };
-  },
+  (db, tx) => updateEach(tx, 'exercises', ({ note, ...rest }) => rest),
 
   // v3: reps top out at 10 instead of 12 (user's request).
-  (db, tx) => {
-    tx.objectStore('routines').openCursor().onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (!cursor) return;
-      cursor.update(capRepsAt10(cursor.value));
-      cursor.continue();
-    };
-  },
+  (db, tx) => updateEach(tx, 'routines', capRepsAt10),
 
   // v4: every rep range tops out at 10 (user clarified v3's request).
-  (db, tx) => {
-    tx.objectStore('routines').openCursor().onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (!cursor) return;
-      cursor.update(capAllRepsAt10(cursor.value));
-      cursor.continue();
-    };
-  },
+  (db, tx) => updateEach(tx, 'routines', capAllRepsAt10),
 
   // v5: morning weigh-ins, one per day: { date, weight, savedAt }.
   (db) => {
@@ -109,18 +110,8 @@ const MIGRATIONS = [
   },
 
   // v7: all exercises 3 × 8–10, no "optional", no subtitle, rename hip thrust.
-  (db, tx) => {
-    tx.objectStore('routines').openCursor().onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (!cursor) return;
-      cursor.update(simplifyRoutine(cursor.value));
-      cursor.continue();
-    };
-    const exercises = tx.objectStore('exercises');
-    exercises.get('hip-thrust').onsuccess = (event) => {
-      if (event.target.result) exercises.put(renameHipThrust(event.target.result));
-    };
-  },
+  (db, tx) => updateEach(tx, 'routines', simplifyRoutine)
+    .then(() => updateEach(tx, 'exercises', renameHipThrust)),
 
   // v8: monthly check-ins, one per day: { date, waist, hips, glutes, thighs,
   // savedAt } in cm. Missing measurements are left out.
@@ -133,6 +124,10 @@ const MIGRATIONS = [
   (db) => {
     db.createObjectStore('photos', { keyPath: 'id' }).createIndex('date', 'date');
   },
+
+  // v10: delete unused data: `hips` in check-ins, `optional` in routines.
+  (db, tx) => updateEach(tx, 'checkins', dropHips)
+    .then(() => updateEach(tx, 'routines', dropOptional)),
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
@@ -153,6 +148,10 @@ const BACKUP_MIGRATIONS = {
   },
   7: (data) => { data.checkins = []; },
   8: (data) => { data.photos = []; },
+  9: (data) => {
+    data.checkins = data.checkins.map(dropHips);
+    data.routines = data.routines.map(dropOptional);
+  },
 };
 
 let dbPromise = null;
@@ -164,9 +163,18 @@ export function openDB() {
     req.onupgradeneeded = (event) => {
       const db = req.result;
       const tx = req.transaction;
-      for (let v = event.oldVersion; v < SCHEMA_VERSION; v++) {
-        MIGRATIONS[v](db, tx);
-      }
+      // Run the missing steps strictly one after another. If one fails, the
+      // whole upgrade is cancelled and the data stays as it was.
+      let v = event.oldVersion;
+      const fail = (err) => { console.error(err); tx.abort(); };
+      const next = () => {
+        if (v >= SCHEMA_VERSION) return;
+        let result;
+        try { result = MIGRATIONS[v++](db, tx); } catch (err) { fail(err); return; }
+        if (result && typeof result.then === 'function') result.then(next, fail);
+        else next();
+      };
+      next();
     };
     req.onsuccess = () => {
       const db = req.result;
@@ -357,8 +365,7 @@ export async function deleteMacros(date) {
 
 // ---- Monthly check-ins (measurements in cm) ----
 
-// Shown and charted, in this order. (Older check-ins may also hold `hips`,
-// measured before v17: kept, just not shown.)
+// Shown and charted, in this order.
 export const MEASUREMENTS = ['waist', 'neck', 'glutes', 'thighs', 'arm'];
 
 // All check-ins, newest first.

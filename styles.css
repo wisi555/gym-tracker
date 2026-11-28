@@ -751,11 +751,6 @@ button.set-val {
 .saved-sets li.editing { display: block; padding: 8px 0; }
 .set-edit .secondary.quiet { background: var(--bg); }
 
-.placeholder {
-  color: var(--muted);
-  text-align: center;
-  margin-top: 30vh;
-}
 
 /* ---- Rest timer bar (above the tabs) ---- */
 .rest-bar {

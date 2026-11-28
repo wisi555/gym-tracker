@@ -92,6 +92,15 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - **Never lose data.** Any change to how data is stored must keep existing
   data working: bump the IndexedDB version and write a migration in
   `onupgradeneeded`. Never delete or rename a store/field without migrating it.
+- **But delete what will never be used** (user's explicit permission, v18):
+  don't keep dead data, fields, code or styles "just in case" — remove them
+  with a migration (+ backup step) so nothing clutters. Only the upgrade
+  chain itself (`defaults.js`, old migration helpers) stays, because fresh
+  installs and old backups replay it.
+- **Upgrade steps run strictly one after another.** A step that changes
+  records must use `updateEach()` (or return a promise) so the next step
+  starts only when it's finished. (Before v18, overlapping cursor steps could
+  read stale records; harmless then, caught by the tests when v10 was added.)
 - Every exercise has a **permanent id**. History points to the id, never the
   name, so renaming or editing an exercise keeps its history. Ids are never reused.
 - Routines are **data, not code**: stored in IndexedDB, seeded from a defaults
@@ -154,7 +163,9 @@ in `package.json`) and run on GitHub for every push
   `seed` (writes made-up records into IndexedDB), `readStore`, `makeSets`,
   `day(n)`.
 - Specs: `app` (loads, installable, offline, update, settings),
-  `upgrade` (a version-1 database gets every migration with data kept),
+  `upgrade` (a version-1 database gets every migration with data kept; a
+  version-9 database loses `hips`/`optional`), `app` also checks a brand-new
+  install ends with the current routines,
   `log`, `timer` (fake clock), `body` (weights, macros reader + paste),
   `progress` (streak rules, excuse, charts), `backup` (export, old-backup
   import, bad files), `theme`.
@@ -237,8 +248,7 @@ in `package.json`) and run on GitHub for every push
   / "Update weight". One weight per day (saving again replaces it). "Last 14
   days" list (one decimal, e.g. "62.0 kg") with trash icon + confirm.
   **No extra text lines** like "−0.4 kg vs last week" (clutter).
-- Future idea (user would love it, later): a **chart of historical weekly
-  average weight**.
+- The weekly average weight chart (user's idea) lives in Progress → Body.
 - Macros tracking: the user enters the day's food in their own Claude session,
   which estimates the day's macros. The app needs a place to input and track
   those macros.
@@ -255,7 +265,6 @@ in `package.json`) and run on GitHub for every push
   height" → prompt; stored in `meta.height`, exported). Body fat is
   calculated, never stored. "Save check-in" / "Update check-in" (one per
   day); "Check-ins" list with delete (also deletes that day's photos).
-  Older check-ins may still hold `hips` (pre-v17): kept, not shown.
 - Photos (same screen, `checkin.js`): panel "Photos" with three slots
   **Front · Side · Back** for the selected date (no tip text — removed in
   v17 at the user's request; advice on relaxed poses was given in chat).
@@ -376,7 +385,7 @@ Export all data to a JSON file, and import it back.
 Accounts, sync, backend, social features, exercise videos or libraries,
 complex dashboards, etc. Keeping it simple for now.
 
-## Data model (database version 9)
+## Data model (database version 10)
 - Database `gym-tracker`. Its version = number of entries in `MIGRATIONS`
   (`db.js`). Each migration upgrades existing data one step; released
   migrations are never edited or removed.
@@ -391,11 +400,12 @@ complex dashboards, etc. Keeping it simple for now.
   `optional: false`, removed routine `subtitle`, renamed `hip-thrust` to
   "Hip thrust" (`simplifyRoutine`/`renameHipThrust`, `BACKUP_MIGRATIONS[6]`);
   v8 added `checkins` (`BACKUP_MIGRATIONS[7]`); v9 added `photos`
-  (`BACKUP_MIGRATIONS[8]`).
+  (`BACKUP_MIGRATIONS[8]`); v10 deleted unused data: `hips` in check-ins and
+  `optional` in routine items (`dropHips`/`dropOptional`, `BACKUP_MIGRATIONS[9]`).
 - `routines`: `{ id, name, order, items: [{ exerciseId,
-  sets: {min,max}, reps: {min,max}, optional }] }`. E.g. "3x8-10" →
-  sets 3–3, reps 8–10. Ids: `upper`, `lower`. (`subtitle` existed until v7;
-  `optional` is kept but false.)
+  sets: {min,max}, reps: {min,max} }] }`. E.g. "3x8-10" → sets 3–3,
+  reps 8–10. Ids: `upper`, `lower`. (`subtitle` removed in v7, `optional`
+  in v10.)
 - `sets`: `{ id, date, exerciseId, routineId, setNo, weight, reps, savedAt }`,
   indexed by `[exerciseId, date]` (`exercise_date`) and by `date`.
 - `meta`: `{ key, value }` for settings and bookkeeping: `lastBackup`
@@ -405,9 +415,8 @@ complex dashboards, etc. Keeping it simple for now.
 - `macros`: `{ date, eaten: {kcal, protein, carbs, fat, fiber},
   target: {…same}, savedAt }`, key = `date`. Missing numbers are left out.
 - `checkins`: `{ date, waist, neck, glutes, thighs, arm, savedAt }` in cm,
-  key = `date`; missing measurements left out; older ones may hold `hips`.
-  `MEASUREMENTS` in `db.js` lists the shown ones (adding optional fields
-  needed no migration).
+  key = `date`; missing measurements left out (`hips` deleted in v10).
+  `MEASUREMENTS` in `db.js` lists them.
 - `photos`: `{ id: 'YYYY-MM-DD|pose', date, pose, blob, savedAt }`, pose =
   `front|side|back` (`POSES`), `blob` = the JPEG; index `date`.
 - No separate "workout" record: a session = all sets of one exercise on one
