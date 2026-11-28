@@ -7,6 +7,9 @@ import { renderSettings } from './settings.js';
 import { refreshInstallBanner } from './install.js';
 import { initTimer } from './timer.js';
 import { icon } from './ui.js';
+import { initTheme } from './theme.js';
+
+initTheme();
 
 let version = '…';
 

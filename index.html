@@ -8,6 +8,14 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="styles.css">
+  <script>
+    // Apply the saved Light/Dark/Auto choice before the page draws (no flash).
+    try {
+      var t = localStorage.getItem('gym-tracker-theme') || 'light';
+      if (t === 'auto') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
   <script type="module" src="app.js"></script>
 </head>
 <body>

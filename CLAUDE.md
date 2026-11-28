@@ -56,7 +56,17 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - **Look: minimalist, pastel pink is the protagonist.** Pink `#f6b8cf` for the
   header, active tab and main buttons; barely-pink white background; deep plum
   `#3d1f2e` text for readability. Colors are variables at the top of
-  `styles.css`. Light theme only (for now). Icons match: plum dumbbell on pink.
+  `styles.css`. Icons match: plum dumbbell on pink.
+- **Dark mode** (v13): Settings → Appearance → **Light | Dark | Auto** (Auto
+  follows the phone; default Light). Dark palette: bg `#1d1519`, surface
+  `#2b1f25`, text `#fbe7ef`, muted `#c7a4b4`, header `#3a2230` with pink
+  text, chart `#f08cb2`; pastel pink still on buttons/active tab/big cards
+  (with dark `--on-pink` text). All pairs contrast-checked. Colors switch via
+  `:root[data-theme="dark"]` variables — **never hard-code a color**; any
+  element on a pink background must set `color: var(--on-pink)`.
+  The choice is stored in `localStorage` (`gym-tracker-theme`): it's a phone
+  preference, not data, and must be read before the page draws (inline
+  script in `index.html`). `theme.js` applies it and colors the status bar.
 - **No emoji or symbol characters as icons.** Use the minimal line icons in
   `ui.js` (`icon('check')`, `trash`, `back`, `plus`, `minus`, `download`,
   `upload`, `install`, `up`, `paste`, `scale`, `chart`): 24×24 SVG strokes in the text color. Add new ones there.
@@ -91,7 +101,7 @@ no cloud, no analytics. All data stays on the user's Android phone.
   where a late-evening workout lands on the wrong day).
 - Export/import must always include every store and a `schemaVersion`, and
   import must migrate older exports.
-- No `localStorage` for real data.
+- No `localStorage` for real data (only the theme preference lives there).
 
 ## Files
 - `index.html` – the single page (header with version, sections, tab bar).
@@ -107,9 +117,11 @@ no cloud, no analytics. All data stays on the user's Android phone.
 - `progress.js` – the Progress tab (streak + stats, strength, body charts);
   `streakStats()` is a pure function (tested on its own).
 - `chart.js` – `lineChart()`: the small SVG line chart.
-- `settings.js` – Settings screen: export/import, storage status, version.
+- `settings.js` – Settings screen: export/import, appearance, storage
+  status, version.
 - `install.js` – "browser version" banner with Install button / steps.
 - `timer.js` – rest timer bar.
+- `theme.js` – Light/Dark/Auto (`getThemePref`, `setThemePref`, `initTheme`).
 - `ui.js` – shared helpers (anything used by another file must be
   `export`ed): `h()` element builder, `icon()`, dates
   (`todayStr`, `shortDate`, `addDays`, `weekStart`, `daysBetween`),
@@ -352,6 +364,28 @@ subject to change; mark items done as they ship):
       clutter/bugs. If ever revisited: no real deletes (hide instead),
       separate "rename" from "replace", tucked away in Settings.
 - [x] 5. Progress section (Streak | Strength | Body).
+- [x] Dark mode (v13).
+Next round (agreed plan, in this order):
+- [ ] 6. Automatic tests in the repo (`tests/`, made-up data only) run by a
+      GitHub Action on every push; Claude checks results before saying a
+      version is ready.
+- [ ] 7a. Edit a saved set: tap it → opens in place with the − / + editor,
+      Save / Cancel; keeps date + position; doesn't restart the timer.
+- [ ] 7b. Gentle backup reminder: small line at the top of Log, "Last backup
+      N days ago" → opens Backup. Shown when there's data and last backup
+      > **14 days** (or never, after a week of use). Gone after exporting.
+- [ ] 8. Monthly check-in, part 1: Body switch becomes Weight | Macros |
+      Check-in. Measurements in cm (0.5 steps): **waist, hips, glutes,
+      thighs** (plural). Previous check-in shown for reference; dot on
+      Check-in when the last one is > 30 days old. Progress → Body chart
+      options become scrollable chips incl. the measurements (one point per
+      check-in). New store + migration + backup step.
+- [ ] 9. Monthly check-in, part 2: progress photos **front, side, back**,
+      taken **relaxed, not flexed** (one-line tip: same spot, light, time,
+      distance, clothing). Camera or gallery; shrunk to ~1280 px JPEG; stored
+      only in IndexedDB on the phone. Compare view: two check-ins side by
+      side per pose (first vs latest by default). **Photos are included in
+      the one backup file** (bigger file; user keeps it private).
 
 ## Status notes
 - As of v6 the user has entered **no real workout data** (building in one

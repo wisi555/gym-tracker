@@ -4,6 +4,7 @@ import {
   exportAll, parseBackup, replaceAll, getMeta, setMeta, countSets, getLatestSet,
 } from './db.js';
 import { h, icon, todayStr, shortDate } from './ui.js';
+import { getThemePref, setThemePref } from './theme.js';
 
 // ---- Backup files ----
 
@@ -98,6 +99,17 @@ export async function renderSettings(container, version) {
         h('p', { class: 'note' },
           'Export saves a file to your Downloads. Keep a copy somewhere safe, like Google Drive. '
           + 'Import replaces everything on this phone with the file\'s data.'),
+      ),
+
+      h('h2', {}, 'Appearance'),
+      h('div', { class: 'panel' },
+        h('div', { class: 'segmented small', role: 'group', 'aria-label': 'Appearance' },
+          [['light', 'Light'], ['dark', 'Dark'], ['auto', 'Auto']].map(([id, name]) => h('button', {
+            type: 'button',
+            'aria-pressed': String(getThemePref() === id),
+            onclick: () => { setThemePref(id); rerender(); },
+          }, name))),
+        h('p', { class: 'note' }, 'Auto follows your phone\'s light or dark setting.'),
       ),
 
       h('h2', {}, 'App'),

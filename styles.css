@@ -10,8 +10,30 @@
   --line: #f3d3e0;
   --chart: #d6618f;      /* deeper pink for chart lines/dots/bars only:
                             the pastel is too faint to read as a thin line */
+  --header: #f6b8cf;     /* top bar */
+  --on-header: #3d1f2e;
+  --field: #fff;         /* date and paste boxes */
+  --error: #a0153e;
   --tap: 56px; /* minimum height for anything you tap */
   color-scheme: light;
+}
+
+/* Dark mode: deep plum-black, pastel pink still leads (buttons, active tab,
+   big number cards), pinkish-white text. All pairs checked for contrast. */
+:root[data-theme="dark"] {
+  --bg: #1d1519;
+  --surface: #2b1f25;
+  --pink: #f6b8cf;
+  --text: #fbe7ef;
+  --muted: #c7a4b4;
+  --on-pink: #3d1f2e;
+  --line: #3d2c35;
+  --chart: #f08cb2;
+  --header: #3a2230;
+  --on-header: #f6b8cf;
+  --field: #241a1f;
+  --error: #ff8fab;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -38,8 +60,8 @@ body {
   align-items: center;
   gap: 8px;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-  background: var(--pink);
-  color: var(--on-pink);
+  background: var(--header);
+  color: var(--on-header);
 }
 
 .topbar h1 {
@@ -49,7 +71,7 @@ body {
 
 .version {
   margin-left: auto;
-  color: var(--on-pink);
+  color: var(--on-header);
   opacity: 0.75;
   font-size: 0.85rem;
 }
@@ -100,7 +122,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--on-pink);
+  color: var(--on-header);
 }
 
 .install-banner:not([hidden]) {
@@ -121,6 +143,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 0;
   border-radius: 999px;
   background: var(--pink);
+  color: var(--on-pink);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -179,7 +202,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 12px;
   border: 2px dashed var(--pink);
   border-radius: 16px;
-  background: #fff;
+  background: var(--field);
   color: var(--text);
   font: inherit;
 }
@@ -312,7 +335,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .panel .note { margin: 0; }
 .big-line { font-size: 1.15rem; font-weight: 700; }
 button:disabled { opacity: 0.45; cursor: default; }
-.error { color: #a0153e; }
+.error { color: var(--error); }
 
 /* ---- Log: list ---- */
 .date-row {
@@ -330,7 +353,7 @@ button:disabled { opacity: 0.45; cursor: default; }
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--field);
   color: var(--text);
   font: inherit;
   font-weight: 600;
@@ -414,8 +437,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 }
 
 .hint p { margin: 0; font-weight: 700; }
-.hint .secondary { background: var(--pink); }
-.hint .secondary.quiet { background: var(--bg); }
+.hint .secondary { background: var(--pink); color: var(--on-pink); }
+.hint .secondary.quiet { background: var(--bg); color: var(--text); }
 
 /* ---- Log: one exercise ---- */
 .back-btn {
@@ -453,6 +476,7 @@ button:disabled { opacity: 0.45; cursor: default; }
   border-radius: 50%;
   background: var(--pink);
   font-weight: 700;
+  color: var(--on-pink);
 }
 
 .set-val {
